@@ -229,6 +229,7 @@ var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],F
 var AB={Instagram:"IG",TikTok:"TT",Threads:"TH"};
 var MK=["reach","imp","like","com","shr","sav"],ML={reach:"Reach",imp:"Impression",like:"Like",com:"Comment",shr:"Share",sav:"Save"};
 var KEY="cc-local-v1";
+var NODATE="9999-12-31";   // penanda "belum dijadwalkan" di database (kolom tanggal tidak perlu boleh kosong)
 var $=function(i){return document.getElementById(i)};
 var cfg=window.APP_CONFIG||{},sb=null,items=[],editing=null,mode="",canEdit=true,loaded=false,D=null,today="",who="";
 var n0=new Date(),cur=new Date(n0.getFullYear(),n0.getMonth(),1);   // selalu buka bulan berjalan
@@ -252,7 +253,7 @@ function pi(prog){var i=PROG.indexOf(prog);return i<0?0:i}
 function dot(prog,big){var i=pi(prog);return'<span class="pd p'+i+(big?" big":"")+'" aria-hidden="true">'+(i===6&&!big?"✓":"")+"</span>"}
 // Rapikan satu baris data (lokal maupun Supabase). Data lama yang masih 1 sosmed otomatis jadi posts[0].
 function norm(x){
-  x.date=x.date||"";x.time=String(x.time||"").slice(0,5);x.m=x.m||{};
+  x.date=x.date&&x.date!==NODATE?x.date:"";x.time=String(x.time||"").slice(0,5);x.m=x.m||{};
   x.pic_design=x.pic_design||"";x.pic_video=x.pic_video||"";
   var ps=Array.isArray(x.posts)?x.posts.filter(function(p){return p&&p.platform}):[];
   if(!ps.length&&x.platform)ps=[{platform:x.platform,link:x.link||"",m:x.m}];
@@ -346,7 +347,7 @@ $("un").onclick=function(e){var r=e.target.closest("[data-id]");if(r)openItem(r.
 $("prev").onclick=function(){cur.setMonth(cur.getMonth()-1);render()};
 $("next").onclick=function(){cur.setMonth(cur.getMonth()+1);render()};
 $("tod").onclick=function(){var n=new Date();cur=new Date(n.getFullYear(),n.getMonth(),1);render()};
-$("add").onclick=function(){openItem(null,iso(new Date()))};
+$("add").onclick=function(){openItem(null,"")};   // tanggal kosong: konten baru masuk ke "Belum dijadwalkan"
 
 /* ---------- drag & drop ke tanggal lain (dari kalender atau dari "Belum dijadwalkan") ---------- */
 var dragId=null,overEl=null;
@@ -469,7 +470,7 @@ async function load(){
 var OPT=["gdrive","pic_design","pic_video","posts"];   // kolom yang boleh belum ada di database
 async function persist(it,isNew){
   var first=it.posts[0]||{};
-  var p={date:it.date||null,format:it.format||"",pillar:it.pillar||"",platform:first.platform||"Instagram",title:it.title,brief:it.brief||"",gdrive:it.gdrive||"",link:first.link||"",prog:it.prog||"Brief Idea",notes:it.notes||"",time:it.time||"",m:first.m||{},pic_design:it.pic_design||"",pic_video:it.pic_video||"",posts:it.posts||[]};
+  var p={date:it.date||NODATE,format:it.format||"",pillar:it.pillar||"",platform:first.platform||"Instagram",title:it.title,brief:it.brief||"",gdrive:it.gdrive||"",link:first.link||"",prog:it.prog||"Brief Idea",notes:it.notes||"",time:it.time||"",m:first.m||{},pic_design:it.pic_design||"",pic_video:it.pic_video||"",posts:it.posts||[]};
   var w=function(){return isNew?sb.from("items").insert(p):sb.from("items").update(p).eq("id",it.id)};
   var r=await w(),miss=[];
   while(r.error){
