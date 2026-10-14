@@ -100,6 +100,11 @@ textarea{resize:vertical;min-height:52px}
 .empty{color:var(--mu);font-size:13px}
 .err{color:#dc2626;font-size:13px;min-height:18px}
 .err:empty{min-height:0}
+body.view .day{cursor:default}
+body.view .day:hover{background:transparent}
+#frm.ro :disabled{opacity:1;color:var(--tx);-webkit-text-fill-color:var(--tx);cursor:default}
+#frm.ro select:disabled{appearance:none;-webkit-appearance:none}
+.post a{color:var(--ac);font-size:12px}
 @media (max-width:640px){
   .day{min-height:78px;padding:3px}
   .chip{font-size:10.5px;padding:1px 4px;gap:3px}
@@ -124,6 +129,7 @@ textarea{resize:vertical;min-height:52px}
   <div class="right">
     <span id="st" class="tag" style="display:none"></span>
     <button class="btn" id="exp" title="Unduh semua konten sebagai file CSV (backup)">Export CSV</button>
+    <button class="btn pri" id="in" style="display:none">Masuk</button>
     <button class="btn" id="out" style="display:none">Keluar</button>
     <button class="btn pri" id="add">+ Konten</button>
   </div>
@@ -141,10 +147,11 @@ textarea{resize:vertical;min-height:52px}
 
 <dialog id="lg"><form id="lf">
   <h3>Masuk</h3>
+  <p class="empty" style="margin:0">Masuk untuk menambah atau mengubah konten.</p>
   <label>Email<input type="email" id="em" required autocomplete="username"></label>
   <label>Password<input type="password" id="pw" required autocomplete="current-password"></label>
   <div id="err" class="err"></div>
-  <button class="btn pri">Masuk</button>
+  <div class="act"><button type="button" class="btn" id="lcls">Batal</button> <button class="btn pri">Masuk</button></div>
 </form></dialog>
 
 <dialog id="dlg"><form id="frm" method="dialog">
@@ -155,7 +162,7 @@ textarea{resize:vertical;min-height:52px}
   <label class="t">Progress<select id="prog"></select></label>
   <label class="t">Format<select id="fmt"></select></label>
   <label class="t">Pillar<select id="pil"></select></label>
-  <label>PIC Brief<input id="picd" list="picList" autocomplete="off" placeholder="Nama"></label>
+  <label>PIC Desain<input id="picd" list="picList" autocomplete="off" placeholder="Nama"></label>
   <label>PIC Produksi<input id="picv" list="picList" autocomplete="off" placeholder="Nama"></label>
   <div><span class="lbl">Sosmed</span><div class="pls" id="pls"></div></div>
   <label class="w">Brief<input id="brief" placeholder="https://docs.google.com/..."></label>
@@ -202,11 +209,12 @@ var seed=[
 {id:"8",date:"",format:"Reels/Video",platform:"Instagram",title:"Konten Minggu ke-3 (tanpa judul)",link:"https://www.instagram.com/reel/DdJA94ERLbM/",prog:"ACC",notes:"Minggu ke-3"}
 ];
 var $=function(i){return document.getElementById(i)};
-var cfg=window.APP_CONFIG||{},sb=null,items=[],editing=null,started=false,D=null,today="",who="";
+var cfg=window.APP_CONFIG||{},sb=null,items=[],editing=null,mode="",canEdit=true,D=null,today="",who="";
 var n0=new Date(),cur=new Date(n0.getFullYear(),n0.getMonth(),1);   // selalu buka bulan berjalan
 var flt={},fProg="",fPlat="";
 var wantDb=!!(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY);
 if(wantDb&&window.supabase)sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
+canEdit=!sb;   // ada database: mulai dari mode lihat sampai login
 var MON=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 $("dow").innerHTML=["Sen","Sel","Rab","Kam","Jum","Sab","Min"].map(function(d){return"<div>"+d+"</div>"}).join("");
 
@@ -254,7 +262,7 @@ function vis(it){
 function chip(it){
   var late=isLate(it),
   tip=[it.title||"(Tanpa judul)",it.prog+(late?" (TELAT)":""),it.pic_design&&"Desain: "+it.pic_design,it.pic_video&&"Video: "+it.pic_video].filter(Boolean).join(" · ");
-  return'<div class="chip '+(it.pillar||"x")+(late?" late":"")+'" role="button" tabindex="0" draggable="true" data-id="'+esc(it.id)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
+  return'<div class="chip '+(it.pillar||"x")+(late?" late":"")+'" role="button" tabindex="0"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(it.id)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
    +(late?'<span class="lt">⚠</span>':"")
    +(it.time?'<span class="tm">'+esc(it.time)+"</span>":"")
    +it.posts.map(function(p){return'<span class="pl">'+esc(AB[p.platform]||String(p.platform).slice(0,2).toUpperCase())+"</span>"}).join("")
@@ -262,7 +270,7 @@ function chip(it){
 }
 function row(x){
   var meta=[x.posts.map(function(p){return p.platform}).join(", "),x.pic_design&&"Desain: "+x.pic_design,x.pic_video&&"Video: "+x.pic_video,x.notes].filter(Boolean).map(esc).join(" · ");
-  return'<div class="row" draggable="true" data-id="'+esc(x.id)+'"><span style="flex:1;min-width:0">'+esc(x.title||"(Tanpa judul)")+"<br><small>"+meta+'</small></span><span class="tag '+(x.prog=="ACC"?"ACC":"")+'">'+esc(x.prog)+"</span></div>";
+  return'<div class="row"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(x.id)+'"><span style="flex:1;min-width:0">'+esc(x.title||"(Tanpa judul)")+"<br><small>"+meta+'</small></span><span class="tag '+(x.prog=="ACC"?"ACC":"")+'">'+esc(x.prog)+"</span></div>";
 }
 function picList(){
   var s={};items.forEach(function(x){[x.pic_design,x.pic_video].forEach(function(n){if(n)s[n]=1})});
@@ -307,7 +315,7 @@ var dragId=null,overEl=null;
 function clearOver(){if(overEl){overEl.classList.remove("over");overEl=null}}
 function endDrag(){clearOver();dragId=null;[].forEach.call(document.querySelectorAll(".dragging"),function(x){x.classList.remove("dragging")})}
 function startDrag(e){
-  var c=e.target.closest&&e.target.closest(".chip,.row");if(!c)return;
+  if(!canEdit)return;var c=e.target.closest&&e.target.closest(".chip,.row");if(!c)return;
   dragId=c.dataset.id;e.dataTransfer.effectAllowed="move";
   try{e.dataTransfer.setData("text/plain",dragId)}catch(x){}
   setTimeout(function(){c.classList.add("dragging")},0);
@@ -325,7 +333,7 @@ $("grid").addEventListener("drop",function(e){
   if(d)moveDate(id,d.dataset.d);
 });
 async function moveDate(id,date){
-  var it=byId(id);if(!it||it.date===date)return;
+  if(!canEdit)return;var it=byId(id);if(!it||it.date===date)return;
   it.date=date;render();
   if(!sb){saveLocal();return}
   var r=await sb.from("items").update({date:date}).eq("id",it.id);
@@ -336,12 +344,19 @@ async function moveDate(id,date){
 /* ---------- form konten ---------- */
 var F={title:"title",date:"date",prog:"prog",fmt:"format",pil:"pillar",time:"time",picd:"pic_design",picv:"pic_video",brief:"brief",gdrive:"gdrive",notes:"notes"};
 function blank(date){return{id:null,date:date||"",time:"",prog:"Brief Idea",format:"",pillar:"",title:"",brief:"",gdrive:"",notes:"",pic_design:"",pic_video:"",posts:[{platform:"Instagram",link:"",m:{}}]}}
+// Mode lihat: semua kolom dikunci, tombol Simpan/Hapus/Duplikat disembunyikan
+function setRO(ro){
+  $("frm").classList.toggle("ro",ro);
+  [].forEach.call($("frm").querySelectorAll("input,select,textarea,.tg"),function(el){el.disabled=ro});
+  $("sv").style.display=ro?"none":"";$("cls").textContent=ro?"Tutup":"Batal";
+}
 function openItem(id,date){
+  if(!canEdit&&!id)return;   // mode lihat: boleh buka detail, tidak boleh membuat konten baru
   var it=id?byId(id):blank(date);if(!it)return;
   editing=id?it.id:null;
-  $("dh").textContent=id?"Edit konten":"Konten baru";
-  $("del").style.display=$("dup").style.display=id?"":"none";
-  fill(it);$("dlg").showModal();
+  $("dh").textContent=!canEdit?"Detail konten":id?"Edit konten":"Konten baru";
+  $("del").style.display=$("dup").style.display=(canEdit&&id)?"":"none";
+  fill(it);setRO(!canEdit);$("dlg").showModal();
 }
 function fill(it){
   for(var k in F)$(k).value=it[F[k]]||"";
@@ -356,7 +371,7 @@ function fill(it){
   renderPls();renderPosts();gl();
 }
 function renderPls(){
-  $("pls").innerHTML=PLAT.map(function(p){return'<button type="button" class="f tg" aria-pressed="'+!!D.sel[p]+'" data-pl="'+p+'"><span class="pl">'+AB[p]+"</span>"+p+"</button>"}).join("");
+  $("pls").innerHTML=PLAT.filter(function(p){return canEdit||D.sel[p]}).map(function(p){return'<button type="button" class="f tg" aria-pressed="'+!!D.sel[p]+'" data-pl="'+p+'"><span class="pl">'+AB[p]+"</span>"+p+"</button>"}).join("");
 }
 $("pls").onclick=function(e){var x=e.target.closest("[data-pl]");if(!x)return;D.sel[x.dataset.pl]=!D.sel[x.dataset.pl];$("ferr").textContent="";renderPls();renderPosts()};
 // ER utama = engagement ÷ reach
@@ -371,9 +386,10 @@ function renderPosts(){
     var d=D.pm[p];
     return'<div class="post" data-pl="'+p+'"><h4><span class="pl">'+AB[p]+"</span>"+p+"</h4>"
       +'<label>Link postingan<input data-k="link" value="'+esc(d.link)+'" placeholder="https://..."></label>'
+      +(!canEdit&&/^https?:\/\//.test(d.link)?'<a href="'+esc(d.link)+'" target="_blank" rel="noopener">Buka postingan ↗</a>':"")
       +(posted?'<div class="mg">'+MK.map(function(k){return"<label>"+ML[k]+'<input type="number" min="0" data-m="'+k+'" value="'+esc(d.m[k])+'"></label>'}).join("")+'</div><div class="calc">'+calcHtml(d.m)+"</div>":"")
       +"</div>";
-  }).join("")+(s.length&&!posted?'<div class="empty">Kolom performa muncul setelah Progress diubah ke Posted.</div>':"");
+  }).join("")+(canEdit&&s.length&&!posted?'<div class="empty">Kolom performa muncul setelah Progress diubah ke Posted.</div>':"");
 }
 $("posts").addEventListener("input",function(e){
   var t=e.target,box=t.closest(".post");if(!box)return;
@@ -396,7 +412,7 @@ $("time").onblur=function(){var d=this.value.replace(/\D/g,"");if(d.length==3)d=
 $("cls").onclick=function(){$("dlg").close()};
 // Duplikat: salin konten yang sedang dibuka sebagai konten baru (progress balik ke Brief Idea; file, link postingan, performa, dan notes dikosongkan)
 $("dup").onclick=function(){
-  var s=editing==null?null:byId(editing);if(!s)return;
+  var s=!canEdit||editing==null?null:byId(editing);if(!s)return;
   var c={date:s.date,time:s.time,title:s.title&&s.title!=="(Tanpa judul)"?s.title+" (salinan)":"",prog:"Brief Idea",format:s.format,pillar:s.pillar,pic_design:s.pic_design,pic_video:s.pic_video,brief:s.brief,gdrive:"",notes:"",
     posts:s.posts.map(function(p){return{platform:p.platform,link:"",m:{}}})};
   editing=null;$("dh").textContent="Konten baru (salinan)";$("del").style.display=$("dup").style.display="none";fill(c);
@@ -408,7 +424,7 @@ function loadLocal(){try{items=JSON.parse(localStorage.getItem(KEY))}catch(e){}i
 async function load(){
   var r=await sb.from("items").select("*").order("date",{ascending:true});
   if(r.error){setSt("Gagal memuat data",1);return}
-  setSt(who);items=r.data.map(norm);render();
+  stIdle();items=r.data.map(norm);render();
 }
 var OPT=["gdrive","pic_design","pic_video","posts"];   // kolom yang boleh belum ada di database
 async function persist(it,isNew){
@@ -426,13 +442,14 @@ async function persist(it,isNew){
   load();
 }
 $("del").onclick=async function(){
-  if(editing==null||!confirm("Hapus konten ini?"))return;
+  if(!canEdit||editing==null||!confirm("Hapus konten ini?"))return;
   if(sb){var r=await sb.from("items").delete().eq("id",editing);if(r.error)alert("Gagal menghapus: "+r.error.message);load()}
   else{items=items.filter(function(x){return String(x.id)!==String(editing)});saveLocal();render()}
   $("dlg").close();
 };
 $("frm").onsubmit=function(e){
   e.preventDefault();
+  if(!canEdit)return;
   var posts=PLAT.filter(function(p){return D.sel[p]}).map(function(p){
     var m={};MK.forEach(function(k){m[k]=parseFloat(D.pm[p].m[k])||0});
     return{platform:p,link:D.pm[p].link.trim(),m:m};
@@ -450,7 +467,7 @@ $("frm").onsubmit=function(e){
 /* ---------- export CSV (satu baris per konten per sosmed) ---------- */
 function csvCell(v){v=v==null?"":String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCsv(){
-  var rows=[["Tanggal","Jam","Judul","Progress","Format","Pillar","PIC Desain","PIC Video","Brief","File konten","Sosmed","Link postingan","Reach","Impression","Like","Comment","Share","Save","Engagement","ER (%)","Notes"]];
+  var rows=[["Tanggal","Jam","Judul","Progress","Format","Pillar","PIC Desain","PIC Produksi","Brief","File konten","Sosmed","Link postingan","Reach","Impression","Like","Comment","Share","Save","Engagement","ER (%)","Notes"]];
   items.slice().sort(function(a,c){var x=a.date||"9999",y=c.date||"9999";return x<y?-1:x>y?1:0}).forEach(function(it){
     (it.posts.length?it.posts:[{platform:"",link:"",m:{}}]).forEach(function(p){
       var m=p.m||{},e=(+m.like||0)+(+m.com||0)+(+m.shr||0)+(+m.sav||0),r=+m.reach||0;
@@ -466,23 +483,38 @@ function exportCsv(){
 }
 $("exp").onclick=exportCsv;
 
-/* ---------- login (mode Supabase) ---------- */
-function showLogin(){$("err").textContent="";if(!$("lg").open)$("lg").showModal()}
-$("lg").addEventListener("cancel",function(e){e.preventDefault()});
+/* ---------- login & mode lihat (Supabase) ---------- */
+// Tanpa login: kalender tampil tapi hanya bisa dilihat. Setelah login: bisa menambah, mengubah, dan menghapus.
+function showLogin(){$("err").textContent="";$("lg").showModal()}
+$("in").onclick=showLogin;
+$("lcls").onclick=function(){$("lg").close()};
 $("lf").onsubmit=async function(e){
   e.preventDefault();$("err").textContent="";
   var r=await sb.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value});
   if(r.error)$("err").textContent="Email atau password salah.";
 };
 $("out").onclick=function(){sb.auth.signOut()};
-function start(user){
-  if(started)return;started=true;
-  $("lg").open&&$("lg").close();$("pw").value="";
-  who=user.email;setSt(who);$("out").style.display="";
-  load();
+function stIdle(){
+  if(!sb)return;
+  if(canEdit)setSt(who);else setSt("Hanya lihat",0,"Masuk untuk menambah atau mengubah konten.");
+}
+function applyMode(){
+  document.body.classList.toggle("view",!canEdit);
+  $("add").style.display=$("exp").style.display=canEdit?"":"none";
+  $("out").style.display=sb&&canEdit?"":"none";
+  $("in").style.display=sb&&!canEdit?"":"none";
+}
+async function live(){
+  await sb.removeAllChannels();
   sb.channel("items-live").on("postgres_changes",{event:"*",schema:"public",table:"items"},load).subscribe();
 }
-renderFlt();render();
+function enter(edit,user){
+  mode=edit?"edit":"view";canEdit=edit;who=edit?user.email:"";
+  if($("dlg").open)$("dlg").close();
+  if(edit){if($("lg").open)$("lg").close();$("pw").value=""}
+  applyMode();stIdle();render();load();live();
+}
+renderFlt();applyMode();render();
 if(!sb){
   // Label ini hanya muncul kalau belum terhubung ke database
   setSt(wantDb?"Gagal terhubung ke database":"Belum terhubung ke database",1,"Data hanya tersimpan di browser ini dan tidak dibagikan ke tim.");
@@ -490,8 +522,8 @@ if(!sb){
 }else{
   sb.auth.onAuthStateChange(function(ev,s){
     setTimeout(function(){
-      if(s){start(s.user)}
-      else{started=false;who="";items=[];render();$("out").style.display="none";setSt("");sb.removeAllChannels();showLogin()}
+      if(mode===(s?"edit":"view"))return;
+      enter(!!s,s&&s.user);
     },0);
   });
 }
