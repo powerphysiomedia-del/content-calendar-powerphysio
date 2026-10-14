@@ -60,6 +60,12 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 .chip.Promosi{background:var(--proB);border-color:var(--pro)}
 .chip.x{background:var(--bg);border-color:var(--mu)}
 .chip.late{background:var(--lateB);border-color:var(--late)}
+@media (hover:hover){
+  /* hover per konten: cincin biru + sedikit lebih gelap, dan sorotan seluruh kotak tanggal dimatikan supaya yang menyala hanya konten yang akan diklik */
+  .chip:hover{box-shadow:0 0 0 2px var(--ac);background-image:linear-gradient(color-mix(in srgb,var(--tx) 9%,transparent),color-mix(in srgb,var(--tx) 9%,transparent))}
+  .day:has(.chip:hover){background:transparent}
+  .row:hover{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 7%,var(--sf))}
+}
 .chip.dragging,.row.dragging{opacity:.4}
 .more{font-size:11px;color:var(--mu);padding-left:4px}
 .more.late{color:var(--late);font-weight:600}
@@ -196,20 +202,9 @@ body.view .day:hover{background:transparent}
 var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],FMT=["Reels/Video","Single Post","Carousel","Story"],PIL=["Edukasi","Hiburan","Promosi"],PLAT=["Instagram","TikTok","Threads"];
 var AB={Instagram:"IG",TikTok:"TT",Threads:"TH"};
 var MK=["reach","imp","like","com","shr","sav"],ML={reach:"Reach",imp:"Impression",like:"Like",com:"Comment",shr:"Share",sav:"Save"};
-var KEY="cc-local-v1",b="https://docs.google.com/document/d/";
-// Data contoh untuk MODE LOKAL saja. Mode Supabase memakai tabel "items".
-var seed=[
-{id:"1",date:"2026-09-30",format:"Reels/Video",pillar:"Edukasi",platform:"Instagram",title:"Ankle Sprain “Sudah Nggak Bengkak, Tapi Masih Belum Normal?”",brief:b+"1C_Cv04664WnRNA6TIdX311eOKV6x8h_TmhUgj9r_Y_A/edit?usp=sharing",prog:"Brief Idea"},
-{id:"2",date:"2026-09-30",format:"Single Post",pillar:"Edukasi",platform:"Instagram",title:"ESWT Bisa Buat Cedera Apa Aja?",brief:b+"19ScU1CQRDB5iQy8ut_FY08z5lSTexBBO0GXFqbAbQ58/edit?usp=sharing",prog:"Brief Idea"},
-{id:"3",date:"2026-09-30",format:"Reels/Video",pillar:"Hiburan",platform:"Instagram",title:"Ketika pasien minta sembuh hari ini",brief:b+"1XRifuzhYOHhpaT5Hkp1kiIWWn6iyh3gS7FqIF33r0OQ/edit?usp=sharing",prog:"Brief Idea"},
-{id:"4",date:"2026-09-30",format:"Reels/Video",pillar:"Promosi",platform:"Instagram",title:"Ekspetasi vs Realita datang ke fisioterapi",brief:b+"1ElX-A5dgEBUbw_S02wa56hrHDaJyqg_SHTi_psYoM8E/edit?usp=sharing",prog:"Brief Idea"},
-{id:"5",date:"2026-09-30",format:"Reels/Video",pillar:"Hiburan",platform:"Instagram",title:"Blind ranking 5 treatment untuk runner",brief:b+"1LQ1wLbQ9ts5RKbjUdGD9haIC2Tu7TraZCnLt7s9m4ss/edit?usp=sharing",prog:"Brief Idea"},
-{id:"6",date:"",platform:"Threads",title:"Konten Minggu ke-1 (tanpa judul)",link:"https://www.threads.com/share/GUA1YIDKZ/",prog:"ACC",notes:"Minggu ke-1",m:{reach:15000,imp:24000,like:900,com:50,shr:50,sav:100}},
-{id:"7",date:"",platform:"Instagram",title:"Konten Minggu ke-1 (tanpa judul)",link:"https://www.instagram.com/p/DcNJm2sif_v/",prog:"ACC",notes:"Minggu ke-1"},
-{id:"8",date:"",format:"Reels/Video",platform:"Instagram",title:"Konten Minggu ke-3 (tanpa judul)",link:"https://www.instagram.com/reel/DdJA94ERLbM/",prog:"ACC",notes:"Minggu ke-3"}
-];
+var KEY="cc-local-v1";
 var $=function(i){return document.getElementById(i)};
-var cfg=window.APP_CONFIG||{},sb=null,items=[],editing=null,mode="",canEdit=true,D=null,today="",who="";
+var cfg=window.APP_CONFIG||{},sb=null,items=[],editing=null,mode="",canEdit=true,loaded=false,D=null,today="",who="";
 var n0=new Date(),cur=new Date(n0.getFullYear(),n0.getMonth(),1);   // selalu buka bulan berjalan
 var flt={},fProg="",fPlat="";
 var wantDb=!!(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY);
@@ -289,7 +284,8 @@ function render(){
   }
   $("grid").innerHTML=h;
   var un=items.filter(function(x){return !x.date&&vis(x)});
-  $("un").innerHTML=un.length?un.map(row).join(""):'<div class="empty">'+(items.some(function(x){return !x.date})?"Tidak ada yang cocok dengan filter.":"Semua konten sudah punya tanggal.")+"</div>";
+  var msg=!loaded?"Memuat…":!items.length?(canEdit?"Belum ada konten. Klik + Konten untuk mulai.":"Belum ada konten."):items.some(function(x){return !x.date})?"Tidak ada yang cocok dengan filter.":"Semua konten sudah punya tanggal.";
+  $("un").innerHTML=un.length?un.map(row).join(""):'<div class="empty">'+msg+"</div>";
   var nl=items.filter(isLate).length,lb=$("lateBtn");
   lb.style.display=nl?"":"none";lb.textContent="⚠ "+nl+" telat";
   $("rst").style.display=(fProg||fPlat||Object.keys(flt).some(function(p){return flt[p]}))?"":"none";
@@ -420,11 +416,11 @@ $("dup").onclick=function(){
 
 /* ---------- penyimpanan ---------- */
 function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}}
-function loadLocal(){try{items=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!items||!items.length)items=seed;items=items.map(norm);render()}
+function loadLocal(){try{items=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!Array.isArray(items))items=[];items=items.map(norm);loaded=true;render()}
 async function load(){
   var r=await sb.from("items").select("*").order("date",{ascending:true});
   if(r.error){setSt("Gagal memuat data",1);return}
-  stIdle();items=r.data.map(norm);render();
+  stIdle();items=r.data.map(norm);loaded=true;render();
 }
 var OPT=["gdrive","pic_design","pic_video","posts"];   // kolom yang boleh belum ada di database
 async function persist(it,isNew){
