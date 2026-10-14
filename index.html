@@ -162,7 +162,7 @@ body.view .day:hover{background:transparent}
   <label class="t">Progress<select id="prog"></select></label>
   <label class="t">Format<select id="fmt"></select></label>
   <label class="t">Pillar<select id="pil"></select></label>
-  <label>PIC Desain<input id="picd" list="picList" autocomplete="off" placeholder="Nama"></label>
+  <label>PIC Brief<input id="picd" list="picList" autocomplete="off" placeholder="Nama"></label>
   <label>PIC Produksi<input id="picv" list="picList" autocomplete="off" placeholder="Nama"></label>
   <div><span class="lbl">Sosmed</span><div class="pls" id="pls"></div></div>
   <label class="w">Brief<input id="brief" placeholder="https://docs.google.com/..."></label>
@@ -467,7 +467,7 @@ $("frm").onsubmit=function(e){
 /* ---------- export CSV (satu baris per konten per sosmed) ---------- */
 function csvCell(v){v=v==null?"":String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCsv(){
-  var rows=[["Tanggal","Jam","Judul","Progress","Format","Pillar","PIC Desain","PIC Produksi","Brief","File konten","Sosmed","Link postingan","Reach","Impression","Like","Comment","Share","Save","Engagement","ER (%)","Notes"]];
+  var rows=[["Tanggal","Jam","Judul","Progress","Format","Pillar","PIC Brief","PIC Produksi","Brief","File konten","Sosmed","Link postingan","Reach","Impression","Like","Comment","Share","Save","Engagement","ER (%)","Notes"]];
   items.slice().sort(function(a,c){var x=a.date||"9999",y=c.date||"9999";return x<y?-1:x>y?1:0}).forEach(function(it){
     (it.posts.length?it.posts:[{platform:"",link:"",m:{}}]).forEach(function(p){
       var m=p.m||{},e=(+m.like||0)+(+m.com||0)+(+m.shr||0)+(+m.sav||0),r=+m.reach||0;
