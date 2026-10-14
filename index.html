@@ -219,6 +219,10 @@ body.view .day:hover{background:transparent}
     alter table items add column if not exists pic_video  text default '';
     alter table items add column if not exists posts      jsonb default '[]'::jsonb;
 
+  Supaya tombol Hapus berfungsi, jalankan juga SQL ini sekali (izin hapus untuk user yang sudah login):
+
+    create policy "auth delete items" on public.items for delete to authenticated using (true);
+
   Kolom lama (platform, link, m) tetap diisi dengan sosmed pertama, jadi data lama aman dan masih terbaca.
 */
 var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],FMT=["Reels/Video","Single Post","Carousel","Story"],PIL=["Edukasi","Hiburan","Promosi"],PLAT=["Instagram","TikTok","Threads"];
@@ -317,7 +321,7 @@ function render(){
     var d=new Date(start);d.setDate(start.getDate()+i);var k=iso(d);
     if(i==35&&d.getMonth()!=cur.getMonth())break;
     var its=items.filter(function(x){return x.date===k&&vis(x)}).sort(byTime),hid=its.slice(3);
-    h+='<div class="day'+(d.getMonth()!=cur.getMonth()?" out":"")+(k===today?" today":"")+'" data-d="'+k+'"><span class="n">'+d.getDate()+"</span>"+(its.length?'<div class="cl">'+its.map(function(x){return chip(x)}).join("")+"</div>":"")+(hid.length?'<span class="more'+(hid.some(isLate)?" late":"")+'" title="+'+hid.length+' lagi (scroll)" aria-label="+'+hid.length+' konten lagi, scroll untuk melihat">⌄</span>":"")+"</div>";
+    h+='<div class="day'+(d.getMonth()!=cur.getMonth()?" out":"")+(k===today?" today":"")+'" data-d="'+k+'"><span class="n">'+d.getDate()+"</span>"+(its.length?'<div class="cl">'+its.map(function(x){return chip(x)}).join("")+"</div>":"")+(hid.length?'<span class="more'+(hid.some(isLate)?" late":"")+'" title="+'+hid.length+' lagi (scroll)" aria-label="+'+hid.length+' konten lagi, scroll untuk melihat">⌄</span>':"")+"</div>";
   }
   $("grid").innerHTML=h;
   var un=items.filter(function(x){return !x.date&&vis(x)});
@@ -479,7 +483,13 @@ async function persist(it,isNew){
 }
 $("del").onclick=async function(){
   if(!canEdit||editing==null||!confirm("Hapus konten ini?"))return;
-  if(sb){var r=await sb.from("items").delete().eq("id",editing);if(r.error)alert("Gagal menghapus: "+r.error.message);load()}
+  if(sb){
+    var r=await sb.from("items").delete().eq("id",editing).select("id");
+    if(r.error)alert("Gagal menghapus: "+r.error.message);
+    // Supabase tidak memberi error kalau izin hapus (RLS) belum ada, barisnya saja tidak terhapus
+    else if(!r.data||!r.data.length)alert("Konten tidak terhapus karena database belum mengizinkan hapus. Jalankan SQL policy delete di Supabase (ada di komentar bagian atas script), lalu coba lagi.");
+    load();
+  }
   else{items=items.filter(function(x){return String(x.id)!==String(editing)});saveLocal();render()}
   $("dlg").close();
 };
