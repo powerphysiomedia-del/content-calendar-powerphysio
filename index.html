@@ -7,9 +7,12 @@
 <link rel="icon" type="image/png" href="logo-simbol.png">
 <style>
 :root{--bg:#f7f7f5;--sf:#fff;--tx:#1d2428;--mu:#6d777d;--ln:#e3e5e3;--ac:#1e5aa8;--btn:#1e5aa8;--onac:#fff;
---edu:#2563eb;--hib:#d97706;--pro:#15803d;--eduB:#e8f0fe;--hibB:#fdf1dc;--proB:#e3f4e8;--late:#c62828;--lateB:#fde8e8}
+--edu:#2563eb;--hib:#d97706;--pro:#15803d;--eduB:#e8f0fe;--hibB:#fdf1dc;--proB:#e3f4e8;--late:#c62828;--lateB:#fde8e8;
+/* warna indikator progress */
+--p0:#8a949a;--p1:#8b5cf6;--p2:#0891b2;--p3:#db2777;--p4:#2563eb;--p5:#0d9488;--p6:#16a34a}
 @media (prefers-color-scheme:dark){:root{--bg:#14181a;--sf:#1c2124;--tx:#e8ecee;--mu:#8e999f;--ln:#2d3438;--ac:#6aa5ee;--btn:#1e5aa8;--onac:#0b1b19;
---edu:#7aa7ff;--hib:#f5b450;--pro:#5fd08a;--eduB:#1d2a44;--hibB:#3a2c12;--proB:#173523;--late:#ff8a8a;--lateB:#431d1d}}
+--edu:#7aa7ff;--hib:#f5b450;--pro:#5fd08a;--eduB:#1d2a44;--hibB:#3a2c12;--proB:#173523;--late:#ff8a8a;--lateB:#431d1d;
+--p0:#9aa5ab;--p1:#a78bfa;--p2:#22d3ee;--p3:#f472b6;--p4:#7aa7ff;--p5:#2dd4bf;--p6:#4ade80}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
 .wrap{max-width:1100px;margin:0 auto;padding:16px}
@@ -28,6 +31,12 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 @media (prefers-color-scheme:dark){.brand .typ{filter:brightness(1.7)}}
 .btn:focus-visible,.chip:focus-visible,.row:focus-visible,.f:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
 
+/* warna progress: kelas p0..p6 = urutan PROG */
+.p0{--pc:var(--p0)}.p1{--pc:var(--p1)}.p2{--pc:var(--p2)}.p3{--pc:var(--p3)}.p4{--pc:var(--p4)}.p5{--pc:var(--p5)}.p6{--pc:var(--p6)}
+.pd{flex:none;width:10px;height:10px;border-radius:50%;background:var(--pc,var(--mu));display:inline-grid;place-items:center;color:#fff;font-size:8px;font-weight:800;line-height:1}
+.pd.p6{width:14px;height:14px;font-size:10px}
+.pd.big{width:10px;height:10px;font-size:0}
+
 /* filter */
 .bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
 #flt{display:contents}
@@ -38,6 +47,13 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 .f.late{color:var(--late);border-color:var(--late);background:var(--lateB);font-weight:600}
 .sel{background:var(--sf);border:1px solid var(--ln);border-radius:99px;padding:3px 10px;font-size:13px;width:auto;cursor:pointer}
 .sel.on{border-color:var(--ac);font-weight:600}
+
+/* legend progress */
+.leg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center}
+.leg .lb{font-size:12px;color:var(--mu);margin-right:2px}
+.leg .f{font-size:12px;padding:2px 9px;gap:5px}
+.leg .f[aria-pressed=true]{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 14%,var(--sf))}
+.leg .f b{font-weight:600;color:var(--mu);font-size:11px}
 
 /* kalender */
 .cal{background:var(--sf);border:1px solid var(--ln);border-radius:8px;overflow:hidden}
@@ -76,7 +92,7 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 .row{display:flex;gap:10px;align-items:center;background:var(--sf);border:1px solid var(--ln);border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer}
 .row small{color:var(--mu)}
 .tag{font-size:11px;border:1px solid var(--ln);border-radius:99px;padding:1px 8px;color:var(--mu);white-space:nowrap}
-.tag.ACC{color:var(--pro);border-color:var(--pro)}
+.tag.pt{display:inline-flex;align-items:center;gap:5px;color:var(--tx);border-color:var(--pc)}
 .tag.warn{color:var(--late);border-color:var(--late)}
 
 /* form */
@@ -86,6 +102,7 @@ form{padding:16px;display:grid;gap:10px}
 form h3{margin:0;font-size:16px}
 label,.lbl{display:grid;gap:3px;font-size:12px;color:var(--mu)}
 input,select,textarea{background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:6px 8px;width:100%}
+#prog{border-left:5px solid var(--pc,var(--ln))}
 textarea{resize:vertical;min-height:52px}
 #lf{grid-template-columns:1fr}
 #frm{grid-template-columns:repeat(6,minmax(0,1fr))}
@@ -147,6 +164,7 @@ body.view .day:hover{background:transparent}
   <button class="f late" id="lateBtn" style="display:none" title="Konten yang tanggalnya sudah lewat tapi belum Posted"></button>
   <button class="btn sm" id="rst" style="display:none">Reset filter</button>
 </div>
+<div class="leg" id="leg" aria-label="Keterangan indikator progress"></div>
 <div class="cal"><div class="dow" id="dow"></div><div class="grid" id="grid"></div></div>
 <section class="un"><h2>Belum dijadwalkan</h2><div id="un"></div></section>
 </div>
@@ -221,6 +239,9 @@ function byId(id){return items.find(function(x){return String(x.id)===String(id)
 function byTime(a,c){var x=a.time||"99:99",y=c.time||"99:99";return x<y?-1:x>y?1:0}
 function isLate(it){return !!it.date&&it.date<today&&it.prog!=="Posted"}
 function setSt(txt,warn,tip){var s=$("st");s.textContent=txt||"";s.title=tip||"";s.style.display=txt?"":"none";s.classList.toggle("warn",!!warn)}
+// Indikator progress: titik berwarna per tahap, Posted = lingkaran hijau dengan centang
+function pi(prog){var i=PROG.indexOf(prog);return i<0?0:i}
+function dot(prog,big){var i=pi(prog);return'<span class="pd p'+i+(big?" big":"")+'" aria-hidden="true">'+(i===6&&!big?"✓":"")+"</span>"}
 // Rapikan satu baris data (lokal maupun Supabase). Data lama yang masih 1 sosmed otomatis jadi posts[0].
 function norm(x){
   x.date=x.date||"";x.time=String(x.time||"").slice(0,5);x.m=x.m||{};
@@ -252,12 +273,24 @@ function vis(it){
   if(fProg&&it.prog!==fProg)return false;
   return true;
 }
+// Legend progress (klik untuk memfilter, klik lagi untuk batal)
+function renderLeg(){
+  var cnt={};items.forEach(function(x){cnt[x.prog]=(cnt[x.prog]||0)+1});
+  $("leg").innerHTML='<span class="lb">Progress:</span>'+PROG.map(function(p,i){
+    return'<button class="f p'+i+'" aria-pressed="'+(fProg===p)+'" data-g="'+esc(p)+'" title="Klik untuk menampilkan hanya '+esc(p)+'">'+dot(p)+esc(p)+" <b>"+(cnt[p]||0)+"</b></button>";
+  }).join("");
+}
+$("leg").onclick=function(e){
+  var x=e.target.closest("[data-g]");if(!x)return;
+  fProg=fProg===x.dataset.g?"":x.dataset.g;$("fprog").value=fProg;render();
+};
 
 /* ---------- kalender ---------- */
 function chip(it){
   var late=isLate(it),
   tip=[it.title||"(Tanpa judul)",it.prog+(late?" (TELAT)":""),it.pic_design&&"Desain: "+it.pic_design,it.pic_video&&"Video: "+it.pic_video].filter(Boolean).join(" · ");
   return'<div class="chip '+(it.pillar||"x")+(late?" late":"")+'" role="button" tabindex="0"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(it.id)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
+   +dot(it.prog)
    +(late?'<span class="lt">⚠</span>':"")
    +(it.time?'<span class="tm">'+esc(it.time)+"</span>":"")
    +it.posts.map(function(p){return'<span class="pl">'+esc(AB[p.platform]||String(p.platform).slice(0,2).toUpperCase())+"</span>"}).join("")
@@ -265,7 +298,7 @@ function chip(it){
 }
 function row(x){
   var meta=[x.posts.map(function(p){return p.platform}).join(", "),x.pic_design&&"Desain: "+x.pic_design,x.pic_video&&"Video: "+x.pic_video,x.notes].filter(Boolean).map(esc).join(" · ");
-  return'<div class="row"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(x.id)+'"><span style="flex:1;min-width:0">'+esc(x.title||"(Tanpa judul)")+"<br><small>"+meta+'</small></span><span class="tag '+(x.prog=="ACC"?"ACC":"")+'">'+esc(x.prog)+"</span></div>";
+  return'<div class="row"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(x.id)+'"><span style="flex:1;min-width:0">'+esc(x.title||"(Tanpa judul)")+"<br><small>"+meta+'</small></span><span class="tag pt p'+pi(x.prog)+'">'+dot(x.prog)+esc(x.prog)+"</span></div>";
 }
 function picList(){
   var s={};items.forEach(function(x){[x.pic_design,x.pic_video].forEach(function(n){if(n)s[n]=1})});
@@ -290,6 +323,7 @@ function render(){
   lb.style.display=nl?"":"none";lb.textContent="⚠ "+nl+" telat";
   $("rst").style.display=(fProg||fPlat||Object.keys(flt).some(function(p){return flt[p]}))?"":"none";
   $("fprog").classList.toggle("on",!!fProg);$("fplat").classList.toggle("on",!!fPlat);
+  renderLeg();
   picList();
 }
 $("grid").onclick=function(e){
@@ -354,8 +388,10 @@ function openItem(id,date){
   $("del").style.display=$("dup").style.display=(canEdit&&id)?"":"none";
   fill(it);setRO(!canEdit);$("dlg").showModal();
 }
+function pcl(){$("prog").className="p"+pi($("prog").value)}   // warna garis kiri dropdown Progress
 function fill(it){
   for(var k in F)$(k).value=it[F[k]]||"";
+  pcl();
   D={sel:{},pm:{}};
   PLAT.forEach(function(p){D.pm[p]={link:"",m:{}}});
   (it.posts||[]).forEach(function(p){
@@ -393,7 +429,7 @@ $("posts").addEventListener("input",function(e){
   if(t.dataset.k)d[t.dataset.k]=t.value;
   else if(t.dataset.m){d.m[t.dataset.m]=t.value;var c=box.querySelector(".calc");if(c)c.innerHTML=calcHtml(d.m)}
 });
-$("prog").onchange=renderPosts;
+$("prog").onchange=function(){pcl();renderPosts()};
 function gl(){
   var any=false;
   [["brief","bopen"],["gdrive","gopen"]].forEach(function(p){
