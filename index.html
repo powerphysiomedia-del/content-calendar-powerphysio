@@ -7,11 +7,15 @@
 <link rel="icon" type="image/png" href="logo-simbol.png">
 <style>
 :root{--bg:#f7f7f5;--sf:#fff;--tx:#1d2428;--mu:#6d777d;--ln:#e3e5e3;--ac:#1e5aa8;--btn:#1e5aa8;--onac:#fff;
---edu:#2563eb;--hib:#d97706;--pro:#15803d;--eduB:#e8f0fe;--hibB:#fdf1dc;--proB:#e3f4e8;--late:#c62828;--lateB:#fde8e8;
+--edu:#2563eb;--tps:#7c3aed;--ent:#d97706;--pro:#15803d;--tes:#0e7490;
+--eduB:#e8f0fe;--tpsB:#efe9fd;--entB:#fdf1dc;--proB:#e3f4e8;--tesB:#dff3f7;
+--late:#c62828;--lateB:#fde8e8;
 /* warna indikator progress */
 --p0:#8a949a;--p1:#8b5cf6;--p2:#0891b2;--p3:#db2777;--p4:#2563eb;--p5:#0d9488;--p6:#16a34a}
 @media (prefers-color-scheme:dark){:root{--bg:#14181a;--sf:#1c2124;--tx:#e8ecee;--mu:#8e999f;--ln:#2d3438;--ac:#6aa5ee;--btn:#1e5aa8;--onac:#0b1b19;
---edu:#7aa7ff;--hib:#f5b450;--pro:#5fd08a;--eduB:#1d2a44;--hibB:#3a2c12;--proB:#173523;--late:#ff8a8a;--lateB:#431d1d;
+--edu:#7aa7ff;--tps:#b69cff;--ent:#f5b450;--pro:#5fd08a;--tes:#4cc9e0;
+--eduB:#1d2a44;--tpsB:#2a2145;--entB:#3a2c12;--proB:#173523;--tesB:#12323a;
+--late:#ff8a8a;--lateB:#431d1d;
 --p0:#9aa5ab;--p1:#a78bfa;--p2:#22d3ee;--p3:#f472b6;--p4:#7aa7ff;--p5:#2dd4bf;--p6:#4ade80}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
@@ -71,11 +75,12 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 .chip .tm{flex:none;font-weight:600;font-size:10.5px}
 .chip .lt{flex:none;color:var(--late);font-weight:700}
 .pl{flex:none;display:inline-block;font-size:9px;font-weight:700;line-height:1;padding:2px 3px;border-radius:3px;background:color-mix(in srgb,var(--tx) 12%,transparent);color:var(--tx)}
-.chip.Edukasi{background:var(--eduB);border-color:var(--edu)}
-.chip.Tips and Exercise{background:var(--eduB);border-color:var(--edu)}
-.chip.Entertain{background:var(--hibB);border-color:var(--hib)}
-.chip.Promosi{background:var(--proB);border-color:var(--pro)}
-.chip.Testimoni{background:var(--proB);border-color:var(--pro)}
+/* warna per pillar (kelas memakai kode pendek, bukan nama pillar, karena nama bisa mengandung spasi) */
+.chip.k-edu{background:var(--eduB);border-color:var(--edu)}
+.chip.k-tps{background:var(--tpsB);border-color:var(--tps)}
+.chip.k-ent{background:var(--entB);border-color:var(--ent)}
+.chip.k-pro{background:var(--proB);border-color:var(--pro)}
+.chip.k-tes{background:var(--tesB);border-color:var(--tes)}
 .chip.x{background:var(--bg);border-color:var(--mu)}
 .chip.late{background:var(--lateB);border-color:var(--late)}
 @media (hover:hover){
@@ -225,9 +230,19 @@ body.view .day:hover{background:transparent}
 
     create policy "auth delete items" on public.items for delete to authenticated using (true);
 
+  (Opsional) Supaya data lama di database ikut memakai nama pillar baru. Tanpa ini pun data lama
+  tetap tampil benar karena otomatis diubah saat dibaca:
+
+    update items set pillar='Entertain' where pillar='Hiburan';
+    update items set pillar='Promotion' where pillar='Promosi';
+
   Kolom lama (platform, link, m) tetap diisi dengan sosmed pertama, jadi data lama aman dan masih terbaca.
 */
-var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],FMT=["Reels/Video","Single Post","Carousel","Story"],PIL=["Edukasi","Tips and Exercise","Entertain","Promosi", "Testimoni"],PLAT=["Instagram","TikTok","Threads"];
+var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],FMT=["Reels/Video","Single Post","Carousel","Story"],PIL=["Edukasi","Tips and Exercise","Entertain","Promotion","Testimoni"],PLAT=["Instagram","TikTok","Threads"];
+// Kode pendek per pillar: dipakai untuk nama kelas CSS dan variabel warna
+var PK={"Edukasi":"edu","Tips and Exercise":"tps","Entertain":"ent","Promotion":"pro","Testimoni":"tes"};
+// Nama pillar lama -> nama baru (supaya data lama tetap terbaca)
+var PILOLD={"Hiburan":"Entertain","Promosi":"Promotion"};
 var AB={Instagram:"IG",TikTok:"TT",Threads:"TH"};
 var MK=["reach","imp","like","com","shr","sav"],ML={reach:"Reach",imp:"Impression",like:"Like",com:"Comment",shr:"Share",sav:"Save"};
 var KEY="cc-local-v1";
@@ -256,6 +271,7 @@ function dot(prog,big){var i=pi(prog);return'<span class="pd p'+i+(big?" big":""
 // Rapikan satu baris data (lokal maupun Supabase). Data lama yang masih 1 sosmed otomatis jadi posts[0].
 function norm(x){
   x.date=x.date&&x.date!==NODATE?x.date:"";x.time=String(x.time||"").slice(0,5);x.m=x.m||{};
+  x.pillar=PILOLD[x.pillar]||x.pillar||"";   // Hiburan -> Entertain, Promosi -> Promotion
   x.pic_design=x.pic_design||"";x.pic_video=x.pic_video||"";
   var ps=Array.isArray(x.posts)?x.posts.filter(function(p){return p&&p.platform}):[];
   if(!ps.length&&x.platform)ps=[{platform:x.platform,link:x.link||"",m:x.m}];
@@ -267,8 +283,7 @@ $("fprog").innerHTML='<option value="">Semua progress</option><option value="lat
 $("fplat").innerHTML='<option value="">Semua sosmed</option>'+PLAT.map(function(x){return"<option>"+x+"</option>"}).join("");
 
 /* ---------- filter ---------- */
-var col={Edukasi:"var(--edu)",Tips and Exercise:"var(--tps)", Entertain:"var(--ent)",Promosi:"var(--pro)", Testimoni:"var(--tes};
-function renderFlt(){$("flt").innerHTML=PIL.map(function(p){return'<button class="f" aria-pressed="'+!flt[p]+'" data-p="'+p+'"><i style="background:'+col[p]+'"></i>'+p+"</button>"}).join("")}
+function renderFlt(){$("flt").innerHTML=PIL.map(function(p){return'<button class="f" aria-pressed="'+!flt[p]+'" data-p="'+esc(p)+'"><i style="background:var(--'+PK[p]+')"></i>'+esc(p)+"</button>"}).join("")}
 $("flt").onclick=function(e){var x=e.target.closest("[data-p]");if(!x)return;flt[x.dataset.p]=!flt[x.dataset.p];renderFlt();render()};
 $("fprog").onchange=function(){fProg=this.value;render()};
 $("fplat").onchange=function(){fPlat=this.value;render()};
@@ -300,7 +315,7 @@ $("leg").onclick=function(e){
 function chip(it){
   var late=isLate(it),
   tip=[it.title||"(Tanpa judul)",it.prog+(late?" (TELAT)":""),it.pic_design&&"Desain: "+it.pic_design,it.pic_video&&"Video: "+it.pic_video].filter(Boolean).join(" · ");
-  return'<div class="chip '+(it.pillar||"x")+(late?" late":"")+'" role="button" tabindex="0"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(it.id)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
+  return'<div class="chip '+(PK[it.pillar]?"k-"+PK[it.pillar]:"x")+(late?" late":"")+'" role="button" tabindex="0"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(it.id)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
    +dot(it.prog)
    +(late?'<span class="lt">⚠</span>':"")
    +(it.time?'<span class="tm">'+esc(it.time)+"</span>":"")
