@@ -72,7 +72,7 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 .chip .lt{flex:none;color:var(--late);font-weight:700}
 .pl{flex:none;display:inline-block;font-size:9px;font-weight:700;line-height:1;padding:2px 3px;border-radius:3px;background:color-mix(in srgb,var(--tx) 12%,transparent);color:var(--tx)}
 .chip.Edukasi{background:var(--eduB);border-color:var(--edu)}
-.chip.Tips dan Exercise{background:var(--eduB);border-color:var(--edu)}
+.chip.Tips and Exercise{background:var(--eduB);border-color:var(--edu)}
 .chip.Entertain{background:var(--hibB);border-color:var(--hib)}
 .chip.Promosi{background:var(--proB);border-color:var(--pro)}
 .chip.Testimoni{background:var(--proB);border-color:var(--pro)}
@@ -227,7 +227,7 @@ body.view .day:hover{background:transparent}
 
   Kolom lama (platform, link, m) tetap diisi dengan sosmed pertama, jadi data lama aman dan masih terbaca.
 */
-var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],FMT=["Reels/Video","Single Post","Carousel","Story"],PIL=["Edukasi","Tips dan Exercise","Entertain","Promosi", "Testimoni"],PLAT=["Instagram","TikTok","Threads"];
+var PROG=["Brief Idea","Desain/Editing","Review","CEK!","ON!!","ACC","Posted"],FMT=["Reels/Video","Single Post","Carousel","Story"],PIL=["Edukasi","Tips and Exercise","Entertain","Promosi", "Testimoni"],PLAT=["Instagram","TikTok","Threads"];
 var AB={Instagram:"IG",TikTok:"TT",Threads:"TH"};
 var MK=["reach","imp","like","com","shr","sav"],ML={reach:"Reach",imp:"Impression",like:"Like",com:"Comment",shr:"Share",sav:"Save"};
 var KEY="cc-local-v1";
@@ -267,7 +267,7 @@ $("fprog").innerHTML='<option value="">Semua progress</option><option value="lat
 $("fplat").innerHTML='<option value="">Semua sosmed</option>'+PLAT.map(function(x){return"<option>"+x+"</option>"}).join("");
 
 /* ---------- filter ---------- */
-var col={Edukasi:"var(--edu)",Hiburan:"var(--hib)",Promosi:"var(--pro)"};
+var col={Edukasi:"var(--edu)",Tips and Exercise:"var(--tps)", Entertain:"var(--ent)",Promosi:"var(--pro)", Testimoni:"var(--tes};
 function renderFlt(){$("flt").innerHTML=PIL.map(function(p){return'<button class="f" aria-pressed="'+!flt[p]+'" data-p="'+p+'"><i style="background:'+col[p]+'"></i>'+p+"</button>"}).join("")}
 $("flt").onclick=function(e){var x=e.target.closest("[data-p]");if(!x)return;flt[x.dataset.p]=!flt[x.dataset.p];renderFlt();render()};
 $("fprog").onchange=function(){fProg=this.value;render()};
