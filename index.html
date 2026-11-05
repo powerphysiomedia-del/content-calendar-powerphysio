@@ -96,6 +96,18 @@ button,select,input,textarea{font:inherit;color:var(--tx)}
 .rt{flex:1;min-width:0;overflow-wrap:anywhere}
 .rr select{width:auto;padding:3px 6px;font-size:13px}
 .rr .tag[data-oi]{cursor:pointer}
+/* folder konten belum dijadwalkan */
+.uh{display:flex;align-items:center;gap:10px;margin-bottom:8px}.uh h2{margin:0}
+.fd{background:var(--sf);border:1px solid var(--ln);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.fd.over{border-color:var(--ac);box-shadow:inset 0 0 0 2px var(--ac)}
+.fh{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;user-select:none}
+.fh:hover{background:color-mix(in srgb,var(--ac) 6%,transparent)}
+.fc{display:inline-block;transition:transform .15s;color:var(--mu);font-size:12px}
+.fd.open .fc{transform:rotate(90deg)}
+.fname{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fh .fn{flex:1;min-width:0;font-weight:600}
+.fa{display:flex;gap:4px}.fa .btn{padding:1px 8px}
+.fb{padding:8px 10px 2px;border-top:1px solid var(--ln)}
 @media (max-width:640px){.rform{grid-template-columns:1fr}}
 .chip.x{background:var(--bg);border-color:var(--mu)}
 .chip.late{background:var(--lateB);border-color:var(--late)}
@@ -201,7 +213,7 @@ body.view .day:hover{background:transparent}
 </div>
 <div class="leg" id="leg" aria-label="Keterangan indikator progress"></div>
 <div class="cal"><div class="dow" id="dow"></div><div class="grid" id="grid"></div></div>
-<section class="un"><h2>Belum dijadwalkan</h2><div id="un"></div></section>
+<section class="un"><div class="uh"><h2>Belum dijadwalkan</h2><button class="btn sm" id="nf" style="display:none" title="Buat folder baru">+ Folder</button></div><div id="un"></div></section>
 </div>
 <div id="vRep" style="display:none">
   <div class="bar">
@@ -243,6 +255,7 @@ body.view .day:hover{background:transparent}
   <label class="t">Progress<select id="prog"></select></label>
   <label class="t">Format<select id="fmt"></select></label>
   <label class="t">Pillar<select id="pil"></select></label>
+  <label class="w">Folder (untuk konten yang belum dijadwalkan)<select id="fold"></select></label>
   <label>PIC Brief<input id="picd" list="picList" autocomplete="off" placeholder="Nama"></label>
   <label>PIC Produksi<input id="picv" list="picList" autocomplete="off" placeholder="Nama"></label>
   <div><span class="lbl">Sosmed</span><div class="pls" id="pls"></div></div>
@@ -324,7 +337,7 @@ function dot(prog,big){var i=pi(prog);return'<span class="pd p'+i+(big?" big":""
 function norm(x){
   x.date=x.date&&x.date!==NODATE?x.date:"";x.time=String(x.time||"").slice(0,5);x.m=x.m||{};
   x.pillar=PILOLD[x.pillar]||x.pillar||"";   // Hiburan -> Entertain, Promosi -> Promotion
-  x.pic_design=x.pic_design||"";x.pic_video=x.pic_video||"";x.caption=x.caption||"";
+  x.pic_design=x.pic_design||"";x.pic_video=x.pic_video||"";x.caption=x.caption||"";x.folder_id=x.folder_id==null?"":String(x.folder_id);
   var ps=Array.isArray(x.posts)?x.posts.filter(function(p){return p&&p.platform}):[];
   if(!ps.length&&x.platform)ps=[{platform:x.platform,link:x.link||"",m:x.m}];
   x.posts=ps.map(function(p){return{platform:p.platform,link:p.link||"",m:p.m||{}}});
@@ -396,7 +409,7 @@ function render(){
   $("grid").innerHTML=h;
   var un=items.filter(function(x){return !x.date&&vis(x)});
   var msg=!loaded?"Memuat…":!items.length?(canEdit?"Belum ada konten. Klik + Konten untuk mulai.":"Belum ada konten."):items.some(function(x){return !x.date})?"Tidak ada yang cocok dengan filter.":"Semua konten sudah punya tanggal.";
-  $("un").innerHTML=un.length?un.map(row).join(""):'<div class="empty">'+msg+"</div>";
+  renderUn(un,msg);
   var nl=items.filter(isLate).length,lb=$("lateBtn");
   lb.style.display=nl?"":"none";lb.textContent="⚠ "+nl+" telat";
   $("rst").style.display=(fProg||fPlat||Object.keys(flt).some(function(p){return flt[p]}))?"":"none";
@@ -412,7 +425,13 @@ $("grid").onkeydown=function(e){
   if(e.key!=="Enter"&&e.key!==" ")return;
   var c=e.target.closest(".chip");if(c){e.preventDefault();openItem(c.dataset.id)}
 };
-$("un").onclick=function(e){var r=e.target.closest("[data-id]");if(r)openItem(r.dataset.id)};
+$("un").onclick=function(e){
+  var b;if(e.target.closest(".fn"))return;
+  if(b=e.target.closest("[data-fe]")){renId=b.dataset.fe;render();focusRen();return}
+  if(b=e.target.closest("[data-fx]")){delFolder(b.dataset.fx);return}
+  if(b=e.target.closest("[data-ft]")){toggleFolder(b.dataset.ft);return}
+  var r=e.target.closest("[data-id]");if(r)openItem(r.dataset.id);
+};
 $("prev").onclick=function(){cur.setMonth(cur.getMonth()-1);render()};
 $("next").onclick=function(){cur.setMonth(cur.getMonth()+1);render()};
 $("tod").onclick=function(){var n=new Date();cur=new Date(n.getFullYear(),n.getMonth(),1);render()};
@@ -476,8 +495,8 @@ async function moveDate(id,date){
 }
 
 /* ---------- form konten ---------- */
-var F={title:"title",date:"date",prog:"prog",fmt:"format",pil:"pillar",time:"time",picd:"pic_design",picv:"pic_video",brief:"brief",gdrive:"gdrive",notes:"notes",capt:"caption"};
-function blank(date){return{id:null,date:date||"",time:"",prog:"Brief Idea",format:"",pillar:"",title:"",brief:"",gdrive:"",notes:"",pic_design:"",pic_video:"",caption:"",posts:[{platform:"Instagram",link:"",m:{}}]}}
+var F={title:"title",date:"date",prog:"prog",fmt:"format",pil:"pillar",time:"time",picd:"pic_design",picv:"pic_video",brief:"brief",gdrive:"gdrive",notes:"notes",capt:"caption",fold:"folder_id"};
+function blank(date){return{id:null,date:date||"",time:"",prog:"Brief Idea",format:"",pillar:"",title:"",brief:"",gdrive:"",notes:"",pic_design:"",pic_video:"",caption:"",folder_id:"",posts:[{platform:"Instagram",link:"",m:{}}]}}
 // Mode lihat: semua kolom dikunci, tombol Simpan/Hapus/Duplikat disembunyikan
 function setRO(ro){
   $("frm").classList.toggle("ro",ro);
@@ -493,7 +512,7 @@ function openItem(id,date){
   fill(it);setRO(!canEdit);$("dlg").showModal();
 }
 function pcl(){$("prog").className="p"+pi($("prog").value)}   // warna garis kiri dropdown Progress
-function fill(it){
+function fill(it){foldOpts();
   for(var k in F)$(k).value=it[F[k]]||"";
   pcl();
   D={sel:{},pm:{}};
@@ -549,7 +568,7 @@ $("cls").onclick=function(){$("dlg").close()};
 // Duplikat: salin konten yang sedang dibuka sebagai konten baru (progress balik ke Brief Idea; file, link postingan, performa, dan notes dikosongkan)
 $("dup").onclick=function(){
   var s=!canEdit||editing==null?null:byId(editing);if(!s)return;
-  var c={date:s.date,time:s.time,title:s.title&&s.title!=="(Tanpa judul)"?s.title+" (salinan)":"",prog:"Brief Idea",format:s.format,pillar:s.pillar,pic_design:s.pic_design,pic_video:s.pic_video,brief:s.brief,caption:s.caption,gdrive:"",notes:"",
+  var c={date:s.date,time:s.time,title:s.title&&s.title!=="(Tanpa judul)"?s.title+" (salinan)":"",prog:"Brief Idea",format:s.format,pillar:s.pillar,pic_design:s.pic_design,pic_video:s.pic_video,brief:s.brief,caption:s.caption,folder_id:s.folder_id,gdrive:"",notes:"",
     posts:s.posts.map(function(p){return{platform:p.platform,link:"",m:{}}})};
   editing=null;$("dh").textContent="Konten baru (salinan)";$("del").style.display=$("dup").style.display="none";fill(c);
 };
@@ -586,10 +605,10 @@ async function load(){
   if(r.error){setSt("Gagal memuat data",1);return}
   stIdle();items=r.data.map(norm);loaded=true;render();if(view==="rep")repRender();
 }
-var OPT=["gdrive","pic_design","pic_video","posts","caption"];   // kolom yang boleh belum ada di database
+var OPT=["gdrive","pic_design","pic_video","posts","caption","folder_id"];   // kolom yang boleh belum ada di database
 async function persist(it,isNew){
   var first=it.posts[0]||{};
-  var p={date:it.date||NODATE,format:it.format||"",pillar:it.pillar||"",platform:first.platform||"Instagram",title:it.title,brief:it.brief||"",gdrive:it.gdrive||"",link:first.link||"",prog:it.prog||"Brief Idea",notes:it.notes||"",time:it.time||"",m:first.m||{},pic_design:it.pic_design||"",pic_video:it.pic_video||"",caption:it.caption||"",posts:it.posts||[]};
+  var p={date:it.date||NODATE,format:it.format||"",pillar:it.pillar||"",platform:first.platform||"Instagram",title:it.title,brief:it.brief||"",gdrive:it.gdrive||"",link:first.link||"",prog:it.prog||"Brief Idea",notes:it.notes||"",time:it.time||"",m:first.m||{},pic_design:it.pic_design||"",pic_video:it.pic_video||"",caption:it.caption||"",folder_id:it.folder_id||"",posts:it.posts||[]};
   var w=function(){return isNew?sb.from("items").insert(p).select("id"):sb.from("items").update(p).eq("id",it.id)};
   var r=await w(),miss=[];
   while(r.error){
@@ -777,7 +796,109 @@ $("rcopy").onclick=function(){
   if(!l.length)t+="\n\n(belum ada task)";
   navigator.clipboard.writeText(t).then(function(){b.textContent="Tersalin ✓";setTimeout(function(){b.textContent="Salin untuk WhatsApp"},1500)});
 };
-if(!sb)loadReps();
+/* ---------- folder untuk konten yang belum dijadwalkan ---------- */
+/*  SQL sekali jalan di Supabase:
+    alter table public.items add column if not exists folder_id text default '';
+    create table if not exists public.folders (
+      id bigint generated by default as identity primary key,
+      name text not null default 'Folder baru', created_at timestamptz default now());
+    alter table public.folders enable row level security;
+    create policy "auth all folders" on public.folders for all to authenticated using (true) with check (true);
+    create policy "read folders" on public.folders for select to anon using (true);
+    alter publication supabase_realtime add table public.folders;  */
+var folders=[],col={},renId=null,fErr="";
+try{col=JSON.parse(localStorage.getItem("cc-fcol-v1"))||{}}catch(e){col={}}
+function saveFold(){try{localStorage.setItem("cc-fold-v1",JSON.stringify(folders))}catch(e){}}
+function foldOf(x){return folders.some(function(f){return f.id===x.folder_id})?x.folder_id:""}
+function foldOpts(){$("fold").innerHTML='<option value="">Tanpa folder</option>'+folders.map(function(f){return'<option value="'+esc(f.id)+'">'+esc(f.name)+"</option>"}).join("")}
+function toggleFolder(id){col[id]=!col[id];try{localStorage.setItem("cc-fcol-v1",JSON.stringify(col))}catch(e){}render()}
+function focusRen(){var i=document.querySelector(".fn");if(i){i.focus();i.select()}}
+function fhead(id,name,n,late,edit,open){
+  return'<div class="fd'+(open?" open":"")+'" data-f="'+esc(id)+'"><div class="fh" data-ft="'+esc(id)+'" role="button" tabindex="0" aria-expanded="'+open+'"><span class="fc">▸</span><span>📁</span>'
+   +(renId!=null&&renId===id?'<input class="fn" value="'+esc(name)+'" maxlength="60" aria-label="Nama folder">':'<span class="fname">'+esc(name)+"</span>")
+   +'<span class="tag">'+n+"</span>"+(late?'<span class="tag warn">⚠ '+late+"</span>":"")
+   +(edit&&canEdit?'<span class="fa"><button type="button" class="btn sm" data-fe="'+esc(id)+'" title="Ubah nama folder" aria-label="Ubah nama folder">✎</button><button type="button" class="btn sm" data-fx="'+esc(id)+'" title="Hapus folder" aria-label="Hapus folder">🗑</button></span>':"")+"</div>";
+}
+function renderUn(un,msg){
+  var by={};un.forEach(function(x){var k=foldOf(x);(by[k]=by[k]||[]).push(x)});
+  if(!folders.length){$("un").innerHTML=(fErr?'<div class="err">'+esc(fErr)+"</div>":"")+(un.length?un.map(row).join(""):'<div class="empty">'+msg+"</div>");return}
+  var h=fErr?'<div class="err">'+esc(fErr)+"</div>":"";
+  folders.forEach(function(f){
+    var l=by[f.id]||[],open=!col[f.id];
+    h+=fhead(f.id,f.name,l.length,l.filter(isLate).length,true,open)+(open?'<div class="fb">'+(l.length?l.map(row).join(""):'<div class="empty">Kosong. Seret konten ke sini.</div>')+"</div>":"")+"</div>";
+  });
+  var n=by[""]||[],o=!col[""];
+  h+=fhead("","Tanpa folder",n.length,n.filter(isLate).length,false,o)+(o?'<div class="fb">'+(n.length?n.map(row).join(""):'<div class="empty">'+(un.length?"Semua konten sudah masuk folder.":msg)+"</div>")+"</div>":"")+"</div>";
+  $("un").innerHTML=h;
+}
+async function loadFolders(){
+  var d=[];
+  if(sb){
+    var r=await sb.from("folders").select("*").order("created_at",{ascending:true});
+    if(r.error)fErr="Folder belum aktif: jalankan SQL tabel folders di Supabase ("+r.error.message+")";else{fErr="";d=r.data}
+  }else{try{d=JSON.parse(localStorage.getItem("cc-fold-v1"))}catch(e){}if(!Array.isArray(d))d=[]}
+  folders=d.map(function(f){return{id:String(f.id),name:f.name||"Folder"}});render();
+}
+$("nf").onclick=async function(){
+  var id;
+  if(sb){
+    var r=await sb.from("folders").insert({name:"Folder baru"}).select("id");
+    if(r.error){alert("Gagal membuat folder: "+r.error.message+"\n(Sudah menjalankan SQL tabel folders?)");return}
+    id=String(r.data[0].id);await loadFolders();
+  }else{id=String(Date.now());folders.push({id:id,name:"Folder baru"});saveFold()}
+  col[id]=false;renId=id;render();focusRen();
+};
+async function renameFolder(id,v){
+  v=v.trim();var f=folders.find(function(x){return x.id===String(id)});
+  if(!f||!v||v===f.name){render();return}
+  f.name=v;render();
+  if(sb){var r=await sb.from("folders").update({name:v}).eq("id",id);if(r.error)alert("Gagal mengubah nama: "+r.error.message);await loadFolders()}
+  else saveFold();
+}
+async function delFolder(id){
+  var f=folders.find(function(x){return x.id===String(id)});
+  if(!f||!confirm("Hapus folder \""+f.name+"\"?\nIsinya tidak ikut terhapus, konten pindah ke \"Tanpa folder\"."))return;
+  if(sb){
+    await sb.from("items").update({folder_id:""}).eq("folder_id",id);
+    var r=await sb.from("folders").delete().eq("id",id);if(r.error)alert("Gagal menghapus folder: "+r.error.message);
+    await loadFolders();load();
+  }else{items.forEach(function(x){if(x.folder_id===id)x.folder_id=""});saveLocal();folders=folders.filter(function(x){return x.id!==String(id)});saveFold();render()}
+}
+$("un").addEventListener("keydown",function(e){
+  var i=e.target.closest&&e.target.closest(".fn");
+  if(i){
+    if(e.key==="Enter"){e.preventDefault();i.blur()}
+    else if(e.key==="Escape"){renId=null;render()}
+    e.stopPropagation();return;
+  }
+  var h=e.target.closest&&e.target.closest("[data-ft]");
+  if(h&&e.target===h&&(e.key==="Enter"||e.key===" ")){e.preventDefault();toggleFolder(h.dataset.ft)}
+});
+$("un").addEventListener("focusout",function(e){
+  var i=e.target.closest&&e.target.closest(".fn");if(!i||renId==null)return;
+  var id=renId;renId=null;renameFolder(id,i.value);
+});
+// Pindah ke folder (dari daftar, atau dari kalender: sekalian batal jadwal)
+async function moveFolder(id,fid){
+  if(!canEdit)return;var it=byId(id);if(!it)return;
+  var was=!!it.date;if(!was&&(it.folder_id||"")===fid)return;
+  it.folder_id=fid;it.date="";render();
+  if(!sb){saveLocal();return}
+  var r=await sb.from("items").update({folder_id:fid,date:NODATE}).eq("id",it.id);
+  if(r.error)alert("Gagal memindahkan: "+r.error.message+"\n(Sudah menjalankan SQL kolom folder_id?)");
+  else if(was)await gsync({id:it.id});
+  load();
+}
+$("un").addEventListener("dragover",function(e){
+  if(!dragId||!canEdit)return;var f=e.target.closest(".fd");if(!f)return;
+  e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect="move";
+  if(overEl!==f){clearOver();overEl=f;f.classList.add("over")}
+});
+$("un").addEventListener("drop",function(e){
+  if(!dragId||!canEdit)return;var f=e.target.closest(".fd");if(!f)return;
+  e.preventDefault();e.stopPropagation();var id=dragId;endDrag();moveFolder(id,f.dataset.f);
+});
+if(!sb){loadReps();loadFolders()}
 
 /* ---------- login & mode lihat (Supabase) ---------- */
 // Tanpa login: kalender tampil tapi hanya bisa dilihat. Setelah login: bisa menambah, mengubah, dan menghapus.
@@ -798,20 +919,20 @@ function stIdle(){
 function applyMode(){
   document.body.classList.toggle("view",!canEdit);
   $("add").style.display=$("exp").style.display=canEdit?"":"none";
-  $("add").style.display=canEdit&&view==="cal"?"":"none";$("trep").style.display=canEdit?"":"none";if(!canEdit&&view==="rep")setView("cal");
+  $("add").style.display=canEdit&&view==="cal"?"":"none";$("trep").style.display=canEdit?"":"none";$("nf").style.display=canEdit?"":"none";if(!canEdit&&view==="rep")setView("cal");
   $("gall").style.display=sb&&canEdit?"":"none";
   $("out").style.display=sb&&canEdit?"":"none";
   $("in").style.display=sb&&!canEdit?"":"none";
 }
 async function live(){
   await sb.removeAllChannels();
-  sb.channel("items-live").on("postgres_changes",{event:"*",schema:"public",table:"items"},load).on("postgres_changes",{event:"*",schema:"public",table:"reports"},loadReps).subscribe();
+  sb.channel("items-live").on("postgres_changes",{event:"*",schema:"public",table:"items"},load).on("postgres_changes",{event:"*",schema:"public",table:"reports"},loadReps).on("postgres_changes",{event:"*",schema:"public",table:"folders"},loadFolders).subscribe();
 }
 function enter(edit,user){
   mode=edit?"edit":"view";canEdit=edit;who=edit?user.email:"";
   if($("dlg").open)$("dlg").close();
   if(edit){if($("lg").open)$("lg").close();$("pw").value=""}
-  applyMode();stIdle();render();load();loadReps();live();
+  applyMode();stIdle();render();load();loadReps();loadFolders();live();
 }
 renderFlt();applyMode();render();
 if(!sb){
