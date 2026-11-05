@@ -261,6 +261,8 @@ body.view .day:hover{background:transparent}
   <div><span class="lbl">Sosmed</span><div class="pls" id="pls"></div></div>
   <label class="w">Brief<input id="brief" placeholder="https://docs.google.com/..."></label>
   <label class="w">File konten<input id="gdrive" placeholder="https://drive.google.com/..."></label>
+  <label class="w">Link referensi<textarea id="refs" rows="2" placeholder="Satu link per baris (inspirasi, kompetitor, dll.)"></textarea></label>
+  <div class="lks" id="rlks" style="display:none"></div>
   <div class="lks" id="lks" style="display:none">
     <a id="bopen" target="_blank" rel="noopener" style="display:none">Buka brief ↗</a>
     <a id="gopen" target="_blank" rel="noopener" style="display:none">Buka file konten ↗</a>
@@ -337,7 +339,7 @@ function dot(prog,big){var i=pi(prog);return'<span class="pd p'+i+(big?" big":""
 function norm(x){
   x.date=x.date&&x.date!==NODATE?x.date:"";x.time=String(x.time||"").slice(0,5);x.m=x.m||{};
   x.pillar=PILOLD[x.pillar]||x.pillar||"";   // Hiburan -> Entertain, Promosi -> Promotion
-  x.pic_design=x.pic_design||"";x.pic_video=x.pic_video||"";x.caption=x.caption||"";x.folder_id=x.folder_id==null?"":String(x.folder_id);
+  x.pic_design=x.pic_design||"";x.pic_video=x.pic_video||"";x.caption=x.caption||"";x.folder_id=x.folder_id==null?"":String(x.folder_id);x.ref_links=x.ref_links||"";
   var ps=Array.isArray(x.posts)?x.posts.filter(function(p){return p&&p.platform}):[];
   if(!ps.length&&x.platform)ps=[{platform:x.platform,link:x.link||"",m:x.m}];
   x.posts=ps.map(function(p){return{platform:p.platform,link:p.link||"",m:p.m||{}}});
@@ -377,15 +379,16 @@ $("leg").onclick=function(e){
 };
 
 /* ---------- kalender ---------- */
+function refN(it){return String(it.ref_links||"").split(/\r?\n/).filter(function(s){return/^https?:\/\//.test(s.trim())}).length}
 function chip(it){
   var late=isLate(it),
-  tip=[it.title||"(Tanpa judul)",it.prog+(late?" (TELAT)":""),it.pic_design&&"Desain: "+it.pic_design,it.pic_video&&"Video: "+it.pic_video].filter(Boolean).join(" · ");
+  tip=[it.title||"(Tanpa judul)",it.prog+(late?" (TELAT)":""),it.pic_design&&"Desain: "+it.pic_design,it.pic_video&&"Video: "+it.pic_video,refN(it)&&refN(it)+" link referensi"].filter(Boolean).join(" · ");
   return'<div class="chip '+(PK[it.pillar]?"k-"+PK[it.pillar]:"x")+(late?" late":"")+'" role="button" tabindex="0"'+(canEdit?' draggable="true"':"")+' data-id="'+esc(it.id)+'" title="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
    +dot(it.prog)
    +(late?'<span class="lt">⚠</span>':"")
    +(it.time?'<span class="tm">'+esc(it.time)+"</span>":"")
    +it.posts.map(function(p){return'<span class="pl">'+esc(AB[p.platform]||String(p.platform).slice(0,2).toUpperCase())+"</span>"}).join("")
-   +'<span class="tt">'+(it.gdrive?"📁 ":"")+esc(it.title||"(Tanpa judul)")+"</span></div>";
+   +'<span class="tt">'+(it.gdrive?"📁 ":"")+(refN(it)?"🔗 ":"")+esc(it.title||"(Tanpa judul)")+"</span></div>";
 }
 function row(x){
   var meta=[x.posts.map(function(p){return p.platform}).join(", "),x.pic_design&&"Desain: "+x.pic_design,x.pic_video&&"Video: "+x.pic_video,x.notes].filter(Boolean).map(esc).join(" · ");
@@ -495,8 +498,8 @@ async function moveDate(id,date){
 }
 
 /* ---------- form konten ---------- */
-var F={title:"title",date:"date",prog:"prog",fmt:"format",pil:"pillar",time:"time",picd:"pic_design",picv:"pic_video",brief:"brief",gdrive:"gdrive",notes:"notes",capt:"caption",fold:"folder_id"};
-function blank(date){return{id:null,date:date||"",time:"",prog:"Brief Idea",format:"",pillar:"",title:"",brief:"",gdrive:"",notes:"",pic_design:"",pic_video:"",caption:"",folder_id:"",posts:[{platform:"Instagram",link:"",m:{}}]}}
+var F={title:"title",date:"date",prog:"prog",fmt:"format",pil:"pillar",time:"time",picd:"pic_design",picv:"pic_video",brief:"brief",gdrive:"gdrive",notes:"notes",capt:"caption",fold:"folder_id",refs:"ref_links"};
+function blank(date){return{id:null,date:date||"",time:"",prog:"Brief Idea",format:"",pillar:"",title:"",brief:"",gdrive:"",notes:"",pic_design:"",pic_video:"",caption:"",folder_id:"",ref_links:"",posts:[{platform:"Instagram",link:"",m:{}}]}}
 // Mode lihat: semua kolom dikunci, tombol Simpan/Hapus/Duplikat disembunyikan
 function setRO(ro){
   $("frm").classList.toggle("ro",ro);
@@ -523,7 +526,7 @@ function fill(it){foldOpts();
     D.sel[p.platform]=true;D.pm[p.platform]={link:p.link||"",m:m};
   });
   $("ferr").textContent="";
-  renderPls();renderPosts();gl();cc();
+  renderPls();renderPosts();gl();cc();rl();
 }
 function renderPls(){
   $("pls").innerHTML=PLAT.filter(function(p){return canEdit||D.sel[p]}).map(function(p){return'<button type="button" class="f tg" aria-pressed="'+!!D.sel[p]+'" data-pl="'+p+'"><span class="pl">'+AB[p]+"</span>"+p+"</button>"}).join("");
@@ -568,7 +571,7 @@ $("cls").onclick=function(){$("dlg").close()};
 // Duplikat: salin konten yang sedang dibuka sebagai konten baru (progress balik ke Brief Idea; file, link postingan, performa, dan notes dikosongkan)
 $("dup").onclick=function(){
   var s=!canEdit||editing==null?null:byId(editing);if(!s)return;
-  var c={date:s.date,time:s.time,title:s.title&&s.title!=="(Tanpa judul)"?s.title+" (salinan)":"",prog:"Brief Idea",format:s.format,pillar:s.pillar,pic_design:s.pic_design,pic_video:s.pic_video,brief:s.brief,caption:s.caption,folder_id:s.folder_id,gdrive:"",notes:"",
+  var c={date:s.date,time:s.time,title:s.title&&s.title!=="(Tanpa judul)"?s.title+" (salinan)":"",prog:"Brief Idea",format:s.format,pillar:s.pillar,pic_design:s.pic_design,pic_video:s.pic_video,brief:s.brief,caption:s.caption,folder_id:s.folder_id,ref_links:s.ref_links,gdrive:"",notes:"",
     posts:s.posts.map(function(p){return{platform:p.platform,link:"",m:{}}})};
   editing=null;$("dh").textContent="Konten baru (salinan)";$("del").style.display=$("dup").style.display="none";fill(c);
 };
@@ -605,10 +608,10 @@ async function load(){
   if(r.error){setSt("Gagal memuat data",1);return}
   stIdle();items=r.data.map(norm);loaded=true;render();if(view==="rep")repRender();
 }
-var OPT=["gdrive","pic_design","pic_video","posts","caption","folder_id"];   // kolom yang boleh belum ada di database
+var OPT=["gdrive","pic_design","pic_video","posts","caption","folder_id","ref_links"];   // kolom yang boleh belum ada di database
 async function persist(it,isNew){
   var first=it.posts[0]||{};
-  var p={date:it.date||NODATE,format:it.format||"",pillar:it.pillar||"",platform:first.platform||"Instagram",title:it.title,brief:it.brief||"",gdrive:it.gdrive||"",link:first.link||"",prog:it.prog||"Brief Idea",notes:it.notes||"",time:it.time||"",m:first.m||{},pic_design:it.pic_design||"",pic_video:it.pic_video||"",caption:it.caption||"",folder_id:it.folder_id||"",posts:it.posts||[]};
+  var p={date:it.date||NODATE,format:it.format||"",pillar:it.pillar||"",platform:first.platform||"Instagram",title:it.title,brief:it.brief||"",gdrive:it.gdrive||"",link:first.link||"",prog:it.prog||"Brief Idea",notes:it.notes||"",time:it.time||"",m:first.m||{},pic_design:it.pic_design||"",pic_video:it.pic_video||"",caption:it.caption||"",folder_id:it.folder_id||"",ref_links:it.ref_links||"",posts:it.posts||[]};
   var w=function(){return isNew?sb.from("items").insert(p).select("id"):sb.from("items").update(p).eq("id",it.id)};
   var r=await w(),miss=[];
   while(r.error){
@@ -657,11 +660,11 @@ $("frm").onsubmit=function(e){
 /* ---------- export CSV (satu baris per konten per sosmed) ---------- */
 function csvCell(v){v=v==null?"":String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function exportCsv(){
-  var rows=[["Tanggal","Jam","Judul","Progress","Format","Pillar","PIC Brief","PIC Produksi","Brief","File konten","Sosmed","Link postingan","Reach","Impression","Like","Comment","Share","Save","Engagement","ER (%)","Notes","Caption"]];
+  var rows=[["Tanggal","Jam","Judul","Progress","Format","Pillar","PIC Brief","PIC Produksi","Brief","File konten","Sosmed","Link postingan","Reach","Impression","Like","Comment","Share","Save","Engagement","ER (%)","Notes","Caption","Link referensi"]];
   items.slice().sort(function(a,c){var x=a.date||"9999",y=c.date||"9999";return x<y?-1:x>y?1:0}).forEach(function(it){
     (it.posts.length?it.posts:[{platform:"",link:"",m:{}}]).forEach(function(p){
       var m=p.m||{},e=(+m.like||0)+(+m.com||0)+(+m.shr||0)+(+m.sav||0),r=+m.reach||0;
-      rows.push([it.date,it.time,it.title,it.prog,it.format,it.pillar,it.pic_design,it.pic_video,it.brief,it.gdrive,p.platform,p.link,m.reach||"",m.imp||"",m.like||"",m.com||"",m.shr||"",m.sav||"",e||"",r?(e/r*100).toFixed(2):"",it.notes,it.caption]);
+      rows.push([it.date,it.time,it.title,it.prog,it.format,it.pillar,it.pic_design,it.pic_video,it.brief,it.gdrive,p.platform,p.link,m.reach||"",m.imp||"",m.like||"",m.com||"",m.shr||"",m.sav||"",e||"",r?(e/r*100).toFixed(2):"",it.notes,it.caption,String(it.ref_links||"").split(/\r?\n/).filter(Boolean).join(" | ")]);
     });
   });
   var csv="\uFEFF"+rows.map(function(r){return r.map(csvCell).join(",")}).join("\r\n");
@@ -898,6 +901,14 @@ $("un").addEventListener("drop",function(e){
   if(!dragId||!canEdit)return;var f=e.target.closest(".fd");if(!f)return;
   e.preventDefault();e.stopPropagation();var id=dragId;endDrag();moveFolder(id,f.dataset.f);
 });
+/* ---------- link referensi (satu link per baris) ---------- */
+/*  SQL: alter table public.items add column if not exists ref_links text default '';  */
+function rl(){
+  var l=$("refs").value.split(/\r?\n/).map(function(s){return s.trim()}).filter(function(s){return/^https?:\/\//.test(s)}),b=$("rlks");
+  b.innerHTML=l.map(function(u,i){var h=u;try{h=new URL(u).hostname.replace(/^www\./,"")}catch(e){}return'<a href="'+esc(u)+'" target="_blank" rel="noopener">'+(i+1)+". "+esc(h)+" ↗</a>"}).join("");
+  b.style.display=l.length?"flex":"none";
+}
+$("refs").oninput=rl;
 if(!sb){loadReps();loadFolders()}
 
 /* ---------- login & mode lihat (Supabase) ---------- */
