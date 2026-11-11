@@ -295,6 +295,7 @@ body.view .day:hover{background:transparent}
   </div>
 </form></dialog>
 <datalist id="picList"></datalist>
+<div style="text-align:center;color:var(--mu);font-size:11px;padding:4px 0 20px">Versi file: 11 Nov 2026 (agenda HP + share link)</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
@@ -423,7 +424,7 @@ function renderAgenda(){
   for(var d=1;d<=n;d++){
     var k=iso(new Date(y,m,d)),its=items.filter(function(x){return x.date===k&&vis(x)}).sort(byTime);
     if(!its.length)continue;
-    h+='<div class="ag-day'+(k===today?" today":"")+'"><div class="ag-h">'+DN[new Date(y,m,d).getDay()]+", "+d+" "+MON[m]+" <small>"+its.length+" konten</small></div><div class="ag-b">'+its.map(function(x){return chip(x)}).join("")+"</div></div>";
+    h+='<div class="ag-day'+(k===today?" today":"")+'"><div class="ag-h">'+DN[new Date(y,m,d).getDay()]+", "+d+" "+MON[m]+" <small>"+its.length+" konten</small></div><div class=\"ag-b\">"+its.map(function(x){return chip(x)}).join("")+"</div></div>";
   }
   $("agenda").innerHTML=h||'<p class="empty">Tidak ada konten di bulan ini.</p>';
 }
