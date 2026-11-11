@@ -182,6 +182,22 @@ body.view .day:hover{background:transparent}
   #frm>label,#frm>label.t,#frm>label.w{grid-column:1/-1}
   .mg{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* tampilan HP: kalender diganti daftar agenda per tanggal supaya judul konten terbaca penuh */
+.agenda{display:none}
+@media (max-width:640px){
+  .cal{display:none}
+  .agenda{display:block}
+}
+.ag-day{background:var(--sf);border:1px solid var(--ln);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.ag-h{display:flex;gap:8px;align-items:baseline;padding:8px 10px;border-bottom:1px solid var(--ln);font-weight:600;font-size:13px}
+.ag-h small{color:var(--mu);font-weight:400}
+.ag-day.today .ag-h{background:color-mix(in srgb,var(--ac) 12%,transparent);color:var(--ac)}
+.ag-b{display:flex;flex-direction:column;gap:5px;padding:6px}
+.ag-b .chip{padding:9px 10px;font-size:13px;gap:8px;align-items:flex-start}
+.ag-b .chip .tt{white-space:normal;overflow:visible;text-overflow:clip}
+.ag-b .chip .tm{display:inline}
+.ag-b .chip .pd{margin-top:4px}
 </style>
 </head>
 <body>
@@ -213,6 +229,7 @@ body.view .day:hover{background:transparent}
 </div>
 <div class="leg" id="leg" aria-label="Keterangan indikator progress"></div>
 <div class="cal"><div class="dow" id="dow"></div><div class="grid" id="grid"></div></div>
+<div class="agenda" id="agenda"></div>
 <section class="un"><div class="uh"><h2>Belum dijadwalkan</h2><button class="btn sm" id="nf" style="display:none" title="Buat folder baru">+ Folder</button></div><div id="un"></div></section>
 </div>
 <div id="vRep" style="display:none">
@@ -388,6 +405,7 @@ function render(){
     h+='<div class="day'+(d.getMonth()!=cur.getMonth()?" out":"")+(k===today?" today":"")+'" data-d="'+k+'"><span class="n">'+d.getDate()+"</span>"+(its.length?'<div class="cl">'+its.map(function(x){return chip(x)}).join("")+"</div>":"")+(hid.length?'<span class="more'+(hid.some(isLate)?" late":"")+'" title="+'+hid.length+' lagi (scroll)" aria-label="+'+hid.length+' konten lagi, scroll untuk melihat">⌄</span>':"")+"</div>";
   }
   $("grid").innerHTML=h;
+  renderAgenda();
   var un=items.filter(function(x){return !x.date&&vis(x)});
   var msg=!loaded?"Memuat…":!items.length?(canEdit?"Belum ada konten. Klik + Konten untuk mulai.":"Belum ada konten."):items.some(function(x){return !x.date})?"Tidak ada yang cocok dengan filter.":"Semua konten sudah punya tanggal.";
   renderUn(un,msg);
@@ -398,6 +416,22 @@ function render(){
   renderLeg();
   picList();
 }
+// Daftar agenda (tampil di HP): hanya tanggal yang punya konten, judul tampil penuh
+var DN=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+function renderAgenda(){
+  var y=cur.getFullYear(),m=cur.getMonth(),n=new Date(y,m+1,0).getDate(),h="";
+  for(var d=1;d<=n;d++){
+    var k=iso(new Date(y,m,d)),its=items.filter(function(x){return x.date===k&&vis(x)}).sort(byTime);
+    if(!its.length)continue;
+    h+='<div class="ag-day'+(k===today?" today":"")+'"><div class="ag-h">'+DN[new Date(y,m,d).getDay()]+", "+d+" "+MON[m]+" <small>"+its.length+" konten</small></div><div class="ag-b">'+its.map(function(x){return chip(x)}).join("")+"</div></div>";
+  }
+  $("agenda").innerHTML=h||'<p class="empty">Tidak ada konten di bulan ini.</p>';
+}
+$("agenda").onclick=function(e){var c=e.target.closest(".chip");if(c)openItem(c.dataset.id)};
+$("agenda").onkeydown=function(e){
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  var c=e.target.closest(".chip");if(c){e.preventDefault();openItem(c.dataset.id)}
+};
 $("grid").onclick=function(e){
   var c=e.target.closest(".chip");if(c){openItem(c.dataset.id);return}
   var d=e.target.closest(".day");if(d)openItem(null,d.dataset.d);
