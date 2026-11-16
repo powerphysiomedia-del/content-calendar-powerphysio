@@ -221,7 +221,7 @@ body.view .day:hover{background:transparent}
 </div>
 <div class="leg" id="leg" aria-label="Keterangan indikator progress"></div>
 <div class="cal"><div class="dow" id="dow"></div><div class="grid" id="grid"></div></div>
-<section class="un"><div class="uh"><h2>Belum dijadwalkan</h2><button class="btn sm" id="nf" style="display:none" title="Buat folder baru">+ Folder</button></div><div id="un"></div></section>
+<section class="un"><div class="uh"><h2>Belum dijadwalkan</h2><span class="tag" id="uc"></span><button class="btn sm" id="nf" style="display:none" title="Buat folder baru">+ Folder</button></div><div id="un"></div></section>
 </div>
 <div id="vRep" style="display:none">
   <div class="bar">
@@ -286,7 +286,6 @@ body.view .day:hover{background:transparent}
   </div>
 </form></dialog>
 <datalist id="picList"></datalist>
-<div style="text-align:center;color:var(--mu);font-size:11px;padding:4px 0 20px">Versi file: 11 Nov 2026 v3 (kalender HP + share link)</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
@@ -398,6 +397,7 @@ function render(){
   }
   $("grid").innerHTML=h;
   var un=items.filter(function(x){return !x.date&&vis(x)});
+  $("uc").textContent=items.filter(function(x){return !x.date}).length+" konten";   // total semua konten belum dijadwalkan (tidak terpengaruh filter)
   var msg=!loaded?"Memuat…":!items.length?(canEdit?"Belum ada konten. Klik + Konten untuk mulai.":"Belum ada konten."):items.some(function(x){return !x.date})?"Tidak ada yang cocok dengan filter.":"Semua konten sudah punya tanggal.";
   renderUn(un,msg);
   var nl=items.filter(isLate).length,lb=$("lateBtn");
