@@ -232,6 +232,26 @@ body.view .day:hover{background:transparent}
 .tl-chips button{background:var(--bg);border:1px solid var(--ln);border-radius:99px;padding:2px 10px;font-size:12px;cursor:pointer}
 .tl-chips button:hover{border-color:var(--ac)}
 #tlfm{grid-template-columns:1fr}
+.tl-lk{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tl-lk a{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;text-decoration:none;color:var(--ac);border:1px solid color-mix(in srgb,var(--ac) 45%,var(--ln));border-radius:6px;padding:3px 10px;background:var(--sf)}
+.tl-lk a:hover{background:color-mix(in srgb,var(--ac) 10%,var(--sf))}
+.tl-lk .no{font-size:12px;color:var(--mu)}
+.tl-dt{flex:none;width:64px;text-align:center;line-height:1.15}
+.tl-dt b{display:block;font-size:20px}.tl-dt small{display:block;color:var(--mu);font-size:11px}
+.tl-th{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:16px;font-weight:650}
+.tl-th .tl-av{width:30px;height:30px;font-size:13px}
+.tl-th small{color:var(--mu);font-weight:400;font-size:13px}
+.tl-card{padding:12px 14px}
+.tl-th .sp{flex:1}
+.tl-th .btn{font-weight:400}
+/* tampilan khusus talent (?talent=Nama): hanya jadwal si talent, tanpa menu kerja */
+body.tv header,body.tv #vCal,body.tv #vRep,body.tv #vTl{display:none!important}
+.tv-h{margin:6px 0 14px}.tv-h h1{font-size:22px;margin:0 0 2px;font-weight:700}.tv-h p{margin:0;color:var(--mu)}
+.tv-s{margin:18px 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mu);display:flex;gap:8px;align-items:center}
+.tv-s .b{background:var(--btn);color:#fff;border-radius:99px;padding:1px 10px;text-transform:none;letter-spacing:0;font-size:12px}
+.tv-c .tl-ct{font-size:17px}
+.tv-w{color:var(--mu);font-size:13px;margin-top:4px}
+.tl-ct{font-size:15px}
 .tl-ud{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-weight:600}
 .tl-ud[aria-expanded=true] .fc{transform:rotate(90deg)}
 @media (max-width:640px){.tl-two{grid-template-columns:1fr}#tlttl{min-width:0;flex:1}.tl-tm{width:46px}}
@@ -271,6 +291,7 @@ body.view .day:hover{background:transparent}
 <div class="cal"><div class="dow" id="dow"></div><div class="grid" id="grid"></div></div>
 <section class="un"><div class="uh"><h2>Belum dijadwalkan</h2><span class="tag" id="uc"></span><button class="btn sm" id="nf" style="display:none" title="Buat folder baru">+ Folder</button></div><div id="un"></div></section>
 </div>
+<div id="vTalent" style="display:none"><div class="tv-h"><div class="brand" style="margin-bottom:10px"><img class="sym" alt="" src="logo-simbol.png"><img class="typ" alt="PowerPhysio" src="logo-type.png"></div><h1 id="tvh"></h1><p id="tvp"></p></div><div id="tvl"></div></div>
 <div id="vTl" style="display:none">
   <div class="bar">
     <button class="btn" id="tlprev" aria-label="Sebelumnya">‹</button>
@@ -278,6 +299,7 @@ body.view .day:hover{background:transparent}
     <button class="btn" id="tlnext" aria-label="Berikutnya">›</button>
     <button class="btn" id="tltod">Hari ini</button>
     <div class="tl-seg"><button class="btn" id="tlmw" aria-pressed="true">Minggu</button><button class="btn" id="tlmm" aria-pressed="false">Bulan</button></div>
+    <div class="tl-seg"><button class="btn" id="tlgd" aria-pressed="true" title="Kelompokkan per tanggal">Per hari</button><button class="btn" id="tlgt" aria-pressed="false" title="Kelompokkan per talent">Per talent</button></div>
     <select id="tlftal" class="sel" aria-label="Filter talent"></select>
     <button class="btn pri" id="tladd" style="margin-left:auto;display:none">+ Jadwal syuting</button>
   </div>
@@ -740,11 +762,11 @@ $("gall").onclick=async function(){
 
 /* ---------- penyimpanan ---------- */
 function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}}
-function loadLocal(){try{items=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!Array.isArray(items))items=[];items=items.map(norm);loaded=true;render();openShared()}
+function loadLocal(){try{items=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!Array.isArray(items))items=[];items=items.map(norm);loaded=true;render();if(TV)tvRender();openShared()}
 async function load(){
   var r=await sb.from("items").select("*").order("date",{ascending:true});
   if(r.error){setSt("Gagal memuat data",1);return}
-  stIdle();items=r.data.map(norm);loaded=true;render();if(view==="rep")repRender();if(view==="tl")tlRender();openShared();
+  stIdle();items=r.data.map(norm);loaded=true;render();if(view==="rep")repRender();if(view==="tl")tlRender();if(TV)tvRender();openShared();
 }
 var OPT=["gdrive","pic_design","pic_video","posts","caption","folder_id","ref_links"];   // kolom yang boleh belum ada di database
 async function persist(it,isNew){
@@ -1068,11 +1090,11 @@ function rl(){
   b.style.display=l.length?"flex":"none";
 }
 $("refs").oninput=rl;
-if(!sb){loadReps();loadFolders();loadShoots()}
+if(!sb){loadReps();loadFolders()}
 
 
 /* ---------- timeline syuting (tabel "shoots", lihat schema-timeline.sql) ---------- */
-var tlUnOpen=false,shoots=[],tlEd=null,tlMode="w",tlCur=new Date(),tlCon={},tlLbl={},TLKEY="cc-shoots-v1",TLDAY=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+var tlGrp="d",tlUnOpen=false,shoots=[],tlEd=null,tlMode="w",tlCur=new Date(),tlCon={},tlLbl={},TLKEY="cc-shoots-v1",TLDAY=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 function tlPd(k){var p=k.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
 function tlTals(x){var o=[],m={};String(x.talent||"").split(",").forEach(function(t){t=t.trim();var k=t.toLowerCase();if(t&&!m[k]){m[k]=1;o.push(t)}});return o}
 function tlIni(n){var w=n.replace(/^dr\.?\s+/i,"").split(/\s+/);return(w[0][0]+(w[1]?w[1][0]:"")).toUpperCase()}
@@ -1085,6 +1107,7 @@ async function loadShoots(){
     else{shoots=r.data.map(tlNorm);$("tlerr").textContent=""}
   }else{try{shoots=JSON.parse(localStorage.getItem(TLKEY))}catch(e){}if(!Array.isArray(shoots))shoots=[];shoots=shoots.map(tlNorm)}
   if(view==="tl")tlRender();
+  if(TV)tvRender();
 }
 function tlRange(){
   var a,b;
@@ -1099,14 +1122,23 @@ function tlConf(){   // talent yang sama di tanggal+jam yang sama pada lebih dar
   Object.keys(m).forEach(function(k){if(m[k].length>1)m[k].forEach(function(id){c[id+"|"+k.split("|")[2]]=1})});
   return c;
 }
-function tlCard(x,cf){
-  var it=byId(x.content_id),k=it&&PK[it.pillar],t=tlTals(x);
+function tlLinks(it){
+  if(!it)return"";
+  var o=[],br=String(it.brief||"").trim(),rf=String(it.ref_links||"").split(/\r?\n/).map(function(u){return u.trim()}).filter(function(u){return/^https?:\/\//i.test(u)});
+  if(/^https?:\/\//i.test(br))o.push('<a href="'+esc(br)+'" target="_blank" rel="noopener">📄 Brief ↗</a>');
+  rf.forEach(function(u,i){var h=u;try{h=new URL(u).hostname.replace(/^www\./,"")}catch(e){}o.push('<a href="'+esc(u)+'" target="_blank" rel="noopener" title="'+esc(u)+'">🔗 Referensi'+(rf.length>1?" "+(i+1):"")+" · "+esc(h)+" ↗</a>")});
+  return'<div class="tl-lk">'+(o.length?o.join(""):'<span class="no">Belum ada link brief / referensi</span>')+"</div>";
+}
+function tlCard(x,cf,showDate){
+  var it=byId(x.content_id),k=it&&PK[it.pillar],t=tlTals(x),d=tlPd(x.shoot_date);
   return'<div class="tl-card'+(k?" k-"+k:"")+'" role="button" tabindex="0" data-id="'+esc(x.id)+'">'
-   +'<span class="tl-tm'+(x.shoot_time?"":" none")+'">'+(x.shoot_time||"—")+"</span>"
+   +(showDate?'<div class="tl-dt"><b>'+d.getDate()+"</b><small>"+MON[d.getMonth()].slice(0,3)+" · "+TLDAY[d.getDay()].slice(0,3)+"</small>"+(x.shoot_time?"<small><b style=\"font-size:13px;color:var(--tx)\">"+x.shoot_time+"</b></small>":"")+"</div>"
+     :'<span class="tl-tm'+(x.shoot_time?"":" none")+'">'+(x.shoot_time||"—")+"</span>")
    +'<div class="tl-cb"><div class="tl-ct">'+esc(it?it.title:"(Konten sudah dihapus)")+"</div>"
    +'<div class="tl-meta">'+(t.length?t.map(function(n){var bad=cf[x.id+"|"+n.toLowerCase()];return'<span class="tl-tal'+(bad?" cf":"")+'"'+(bad?' title="Bentrok: talent ini punya jadwal lain di jam yang sama"':"")+'><span class="tl-av">'+esc(tlIni(n))+"</span>"+esc(n)+(bad?" ⚠":"")+"</span>"}).join(""):'<span class="tag warn">Talent belum diisi</span>')
+   +(it&&it.pillar?'<span class="tag">'+esc(it.pillar)+"</span>":"")
    +(it&&it.date?'<span class="tag">Posting '+esc(it.date.slice(8)+"/"+it.date.slice(5,7))+"</span>":"")
-   +"</div></div></div>";
+   +"</div>"+tlLinks(it)+"</div></div>";
 }
 function tlRender(){
   var r=tlRange(),a=iso(r[0]),b=iso(r[1]),td=iso(new Date()),ft=$("tlftal").value;
@@ -1120,11 +1152,18 @@ function tlRender(){
   l.forEach(function(x){(g[x.shoot_date]=g[x.shoot_date]||[]).push(x)});
   var nb=l.some(function(x){return tlTals(x).some(function(t){return cf[x.id+"|"+t.toLowerCase()]})});
   $("tlsum").textContent=l.length?l.length+" jadwal syuting"+(nb?" · ⚠ ada talent bentrok":""):"";
-  var days=Object.keys(g).sort();
-  $("tllist").innerHTML=days.length?days.map(function(k){
+  var days=Object.keys(g).sort(),html="";
+  if(tlGrp==="t"){
+    var bt={};l.forEach(function(x){var t=tlTals(x);if(!t.length)t=["(Talent belum diisi)"];t.forEach(function(n){if(ft&&n!==ft)return;(bt[n]=bt[n]||[]).push(x)})});
+    html=Object.keys(bt).sort().map(function(n){
+      return'<div class="tl-day"><h3 class="tl-th"><span class="tl-av">'+esc(n.charAt(0)==="("?"?":tlIni(n))+"</span>"+esc(n)+" <small>"+bt[n].length+" jadwal</small>"+(canEdit&&n.charAt(0)!=="("?'<span class="sp"></span><button type="button" class="btn sm" data-wa="'+esc(n)+'" title="Salin pesan reminder untuk dikirim ke talent lewat WhatsApp">Salin reminder WA</button><button type="button" class="btn sm" data-tk="'+esc(n)+'" title="Salin link halaman khusus talent ini">Salin link talent</button>':"")+"</h3>"+bt[n].map(function(x){return tlCard(x,cf,true)}).join("")+"</div>";
+    }).join("");
+  }else html=days.map(function(k){
     var d=tlPd(k);
-    return'<div class="tl-day'+(k===td?" today":"")+'"><h3 class="tl-dh"><span class="d">'+TLDAY[d.getDay()]+", "+d.getDate()+" "+MON[d.getMonth()]+"</span><small>"+g[k].length+" konten</small></h3>"+g[k].map(function(x){return tlCard(x,cf)}).join("")+"</div>";
-  }).join(""):'<div class="empty">Belum ada jadwal syuting'+(ft?" untuk "+esc(ft):"")+" di periode ini."+(canEdit?" Klik + Jadwal syuting untuk mulai.":"")+"</div>";
+    return'<div class="tl-day'+(k===td?" today":"")+'"><h3 class="tl-dh"><span class="d">'+TLDAY[d.getDay()]+", "+d.getDate()+" "+MON[d.getMonth()]+"</span><small>"+g[k].length+" konten</small></h3>"+g[k].map(function(x){return tlCard(x,cf,false)}).join("")+"</div>";
+  }).join("");
+  $("tllist").innerHTML=html||'<div class="empty">Belum ada jadwal syuting'+(ft?" untuk "+esc(ft):"")+" di periode ini."+(canEdit?" Klik + Jadwal syuting untuk mulai.":"")+"</div>";
+  $("tlgd").setAttribute("aria-pressed",tlGrp==="d");$("tlgt").setAttribute("aria-pressed",tlGrp==="t");
   var has={};shoots.forEach(function(x){has[x.content_id]=1});
   var all=items.filter(function(x){return !has[String(x.id)]&&x.prog!=="Posted"}).sort(function(x,y){return(x.date||"9999")<(y.date||"9999")?-1:1}),
   w=($("tluq").value||"").toLowerCase().split(/\s+/).filter(Boolean),
@@ -1144,7 +1183,11 @@ $("tlmm").onclick=function(){tlMode="m";$("tlmm").setAttribute("aria-pressed",tr
 $("tlftal").onchange=tlRender;
 $("tlutg").onclick=function(){tlUnOpen=!tlUnOpen;tlRender();if(tlUnOpen)$("tluq").focus()};
 $("tluq").oninput=tlRender;
-$("tllist").onclick=function(e){var c=e.target.closest(".tl-card");if(c)tlOpen(c.dataset.id)};
+$("tlgd").onclick=function(){tlGrp="d";tlRender()};$("tlgt").onclick=function(){tlGrp="t";tlRender()};
+$("tllist").onclick=function(e){
+  var w=e.target.closest("[data-wa]");if(w){tvCopy(w,tvText(w.dataset.wa));return}
+  var k=e.target.closest("[data-tk]");if(k){tvCopy(k,tvLink(k.dataset.tk));return}
+  if(e.target.closest("a"))return;var c=e.target.closest(".tl-card");if(c)tlOpen(c.dataset.id)};
 $("tllist").onkeydown=function(e){if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("tl-card")){e.preventDefault();tlOpen(e.target.dataset.id)}};
 $("tlun").onclick=function(e){var b=e.target.closest("[data-u]");if(b)tlOpen(null,b.dataset.u)};
 function tlConOpts(){
@@ -1201,6 +1244,58 @@ $("tlfm").onsubmit=function(e){
   x.content_id=cid;x.shoot_date=$("tldate").value;x.shoot_time=$("tltime").value;x.talent=tlTals({talent:$("tltal").value}).join(", ");
   tlSave(x,tlEd==null);$("tldlg").close();
 };
+
+/* ---------- tampilan & reminder untuk talent ---------- */
+var TV=(new URLSearchParams(location.search).get("talent")||"").trim();
+if(TV){document.body.classList.add("tv");document.title="Jadwal Syuting · "+TV;$("vTalent").style.display=""}
+function tvLink(n){return location.href.split(/[?#]/)[0]+"?talent="+encodeURIComponent(n)}
+function tvMine(n,fromToday){
+  var td=iso(new Date()),k=n.toLowerCase();
+  return shoots.filter(function(x){return(!fromToday||x.shoot_date>=td)&&tlTals(x).some(function(t){return t.toLowerCase()===k})}).sort(function(a,c){return a.shoot_date<c.shoot_date?-1:a.shoot_date>c.shoot_date?1:(a.shoot_time||"99:99")<(c.shoot_time||"99:99")?-1:1});
+}
+function tvLinks(it){
+  var o=[];if(!it)return o;
+  var br=String(it.brief||"").trim();if(/^https?:\/\//i.test(br))o.push(["Brief",br]);
+  var rf=String(it.ref_links||"").split(/\r?\n/).map(function(u){return u.trim()}).filter(function(u){return/^https?:\/\//i.test(u)});
+  rf.forEach(function(u,i){o.push(["Referensi"+(rf.length>1?" "+(i+1):""),u])});
+  return o;
+}
+function tvRender(){
+  if(!TV)return;
+  var td=iso(new Date()),tm=new Date();tm.setDate(tm.getDate()+1);var tmr=iso(tm),k=TV.toLowerCase(),
+  l=tvMine(TV,true),real=Object.keys(tlAllTal()).indexOf(k)>-1;
+  $("tvh").textContent="Halo, "+TV+" 👋";
+  $("tvp").textContent=l.length?"Ini jadwal syuting kamu yang akan datang ("+l.length+").":(shoots.length&&!real?"Nama ini belum ada di jadwal. Cek lagi link dari tim ya.":"Belum ada jadwal syuting yang akan datang. Nanti kami kabari ya.");
+  var g={};l.forEach(function(x){(g[x.shoot_date]=g[x.shoot_date]||[]).push(x)});
+  $("tvl").innerHTML=Object.keys(g).sort().map(function(d){
+    var dd=tlPd(d),lab=d===td?'<span class="b">Hari ini</span>':d===tmr?'<span class="b">Besok</span>':"";
+    return'<div class="tv-s">'+lab+TLDAY[dd.getDay()]+", "+dd.getDate()+" "+MON[dd.getMonth()]+" "+dd.getFullYear()+"</div>"+g[d].map(function(x){
+      var it=byId(x.content_id),w=tlTals(x).filter(function(t){return t.toLowerCase()!==k}),lk=tvLinks(it),kk=it&&PK[it.pillar];
+      return'<div class="tl-card tv-c'+(kk?" k-"+kk:"")+'" style="cursor:default"><span class="tl-tm'+(x.shoot_time?"":" none")+'" style="width:58px;font-size:16px">'+(x.shoot_time||"—")+"</span>"
+       +'<div class="tl-cb"><div class="tl-ct">'+esc(it?it.title:"(Konten)")+"</div>"
+       +(w.length?'<div class="tv-w">Bersama: '+w.map(esc).join(", ")+"</div>":"")
+       +'<div class="tl-lk">'+(lk.length?lk.map(function(a){return'<a href="'+esc(a[1])+'" target="_blank" rel="noopener">'+(a[0]==="Brief"?"📄 ":"🔗 ")+esc(a[0])+" ↗</a>"}).join(""):'<span class="no">Brief dan referensi menyusul</span>')+"</div></div></div>";
+    }).join("");
+  }).join("");
+}
+// Teks reminder siap kirim lewat WhatsApp (jadwal yang akan datang untuk satu talent)
+function tvText(n){
+  var l=tvMine(n,true),t="Halo "+n+" 👋\nReminder jadwal syuting PowerPhysio:\n";
+  if(!l.length)t+="\n(Belum ada jadwal yang akan datang.)\n";
+  l.forEach(function(x){
+    var it=byId(x.content_id),d=tlPd(x.shoot_date),w=tlTals(x).filter(function(a){return a.toLowerCase()!==n.toLowerCase()});
+    t+="\n📅 *"+TLDAY[d.getDay()]+", "+d.getDate()+" "+MON[d.getMonth()]+" "+d.getFullYear()+(x.shoot_time?" · "+x.shoot_time:"")+"*\n🎬 "+(it?it.title:"Konten")+(w.length?"\n👥 Bersama: "+w.join(", "):"");
+    tvLinks(it).forEach(function(a){t+="\n"+(a[0]==="Brief"?"📄 ":"🔗 ")+a[0]+": "+a[1]});
+    t+="\n";
+  });
+  return t+"\nLihat semua jadwal kamu: "+tvLink(n)+"\nSampai ketemu di lokasi ya! 🙌";
+}
+function tvCopy(btn,txt){
+  var lbl=btn.textContent,ok=function(){btn.textContent="Tersalin ✓";setTimeout(function(){btn.textContent=lbl},1500)};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok,function(){prompt("Salin teks ini:",txt)});else prompt("Salin teks ini:",txt);
+}
+
+if(!sb)loadShoots();   // harus setelah semua variabel timeline di atas dibuat
 
 /* ---------- login & mode lihat (Supabase) ---------- */
 // Tanpa login: kalender tampil tapi hanya bisa dilihat. Setelah login: bisa menambah, mengubah, dan menghapus.
