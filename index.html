@@ -96,13 +96,16 @@ mark{background:color-mix(in srgb,#facc15 40%,transparent);color:inherit;border-
 .tabs{display:flex;gap:6px}
 .tb[aria-pressed=true]{background:var(--btn);border-color:var(--btn);color:#fff}
 .cc{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:12px;flex-wrap:wrap}
-.rform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,210px) 80px 120px auto;gap:8px;padding:10px;background:var(--sf);border:1px solid var(--ln);border-radius:8px;margin-bottom:10px}
+.rform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,210px) 120px auto;gap:8px;padding:10px;background:var(--sf);border:1px solid var(--ln);border-radius:8px;margin-bottom:10px}
 .rg{background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:10px;margin-bottom:10px}
 .rg h3{margin:0 0 6px;font-size:14px;display:flex;gap:8px;align-items:baseline}
 .rg h3 small{color:var(--mu);font-weight:400}
 .rr{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--ln)}
 .rg h3+.rr{border-top:0}
 .rt{flex:1;min-width:0;overflow-wrap:anywhere}
+.rti{width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 6px}
+.rti:hover{border-color:var(--ln)}
+.rti:focus{background:var(--bg);border-color:var(--ac)}
 .rr select{width:auto;padding:3px 6px;font-size:13px}
 .rr .tag[data-oi]{cursor:pointer}
 .rr a.tag{text-decoration:none;color:var(--ac);border-color:var(--ac)}
@@ -249,8 +252,7 @@ body.view .day:hover{background:transparent}
   </div>
   <form class="rform" id="rf" autocomplete="off">
     <input id="rtask" placeholder="Apa yang dikerjakan? (mis. Edit reels tips lutut)" required aria-label="Task">
-    <select id="rcon" aria-label="Konten terkait"></select>
-    <input id="rhrs" type="number" min="0" max="24" step="0.5" placeholder="Jam" aria-label="Durasi (jam)">
+    <input id="rcon" list="rconList" placeholder="Cari konten… (kosong = task umum)" aria-label="Konten terkait (ketik untuk mencari)" autocomplete="off"><datalist id="rconList"></datalist>
     <select id="rsts" aria-label="Status"></select>
     <button class="btn pri">+ Tambah</button>
     <input id="rprf" type="text" inputmode="url" placeholder="Link file (opsional), mis. Google Sheets / Drive" aria-label="Link file" style="grid-column:1/-1">
@@ -764,6 +766,7 @@ $("ccopy").onclick=function(){
 };
 
 /* ---------- laporan harian ---------- */
+var conMap={},conLbl={};
 var RSC={Selesai:"var(--p6)",Lanjut:"var(--p4)",Kendala:"var(--late)"};
 opts($("rsts"),REP_ST);
 function me(){return who?who.split("@")[0]:"Saya"}
@@ -790,8 +793,7 @@ function repList(){var p=$("rper").value;return reps.filter(function(r){return r
 function rrow(r){
   var it=r.content_id&&byId(r.content_id),mine=r.person===me();
   return'<div class="rr" data-r="'+esc(r.id)+'"><span class="pd" style="--pc:'+(RSC[r.status]||"var(--mu)")+'" aria-hidden="true"></span>'
-   +'<span class="rt">'+esc(r.task)+(it?' <span class="tag" data-oi="'+esc(it.id)+'" title="Buka konten">'+esc(it.title)+"</span>":"")+"</span>"
-   +(+r.hours?'<span class="tag">'+r.hours+" jam</span>":"")
+   +'<span class="rt">'+(mine?'<input class="rti" data-rt value="'+esc(r.task)+'" maxlength="300" aria-label="Task" title="Klik untuk mengubah task">':esc(r.task))+(it?' <span class="tag" data-oi="'+esc(it.id)+'" title="Buka konten">'+esc(it.title)+"</span>":"")+"</span>"
    +(r.proof&&/^https?:\/\//i.test(r.proof)?'<a class="tag" href="'+esc(r.proof)+'" target="_blank" rel="noopener" title="Buka file">📎 File</a>':"")
    +'<select data-rs aria-label="Status"'+(mine?"":" disabled")+">"+REP_ST.map(function(s){return"<option"+(s===r.status?" selected":"")+">"+s+"</option>"}).join("")+"</select>"
    +(mine?'<button class="btn sm" data-rp aria-label="Link file" title="'+(r.proof?"Ubah link file":"Tambah link file")+'">'+(r.proof?"✎":"+ File")+"</button>":"")
@@ -804,17 +806,19 @@ function repRender(){
   var pv=$("rper").value;
   $("rper").innerHTML='<option value="">Semua orang</option>'+Object.keys(ps).sort().map(function(n){return'<option value="'+esc(n)+'">'+esc(n)+"</option>"}).join("");
   $("rper").value=pv;$("rper").classList.toggle("on",!!pv);
-  var cv=$("rcon").value;
-  $("rcon").innerHTML='<option value="">Tanpa konten (task umum)</option>'+items.filter(function(x){return x.prog!=="Posted"||x.date===rDate}).sort(function(a,c){return(c.date||"")<(a.date||"")?-1:1}).map(function(x){return'<option value="'+esc(x.id)+'">'+esc((x.date?x.date.slice(5)+" · ":"")+x.title)+"</option>"}).join("");
-  $("rcon").value=cv;
+  conMap={};conLbl={};
+  $("rconList").innerHTML=items.filter(function(x){return x.prog!=="Posted"||x.date===rDate}).sort(function(a,c){return(c.date||"")<(a.date||"")?-1:1}).map(function(x){
+    var l=(x.date?x.date.slice(5)+" · ":"")+x.title;while(conMap[l])l+=" ";   // judul kembar dibuat unik dengan spasi
+    conMap[l]=x.id;conLbl[x.id]=l;return'<option value="'+esc(l)+'">';
+  }).join("");
   var td=items.filter(function(x){return x.date===rDate});
   $("rhint").innerHTML=td.length?'<span class="lb">Konten terjadwal hari ini:</span>'+td.map(function(x){return'<button type="button" class="f" data-q="'+esc(x.id)+'">+ '+esc(x.title)+"</button>"}).join(""):"";
   var l=repList(),g={},h=0,dn=0,kd=0;
-  l.forEach(function(r){(g[r.person]=g[r.person]||[]).push(r);h+=+r.hours||0;if(r.status==="Selesai")dn++;if(r.status==="Kendala")kd++});
-  $("rsum").textContent=l.length?l.length+" task · "+h+" jam · "+dn+" selesai"+(kd?" · "+kd+" kendala":""):"Belum ada laporan untuk "+longDate(rDate)+". Tulis task pertama di atas.";
+  l.forEach(function(r){(g[r.person]=g[r.person]||[]).push(r);if(r.status==="Selesai")dn++;if(r.status==="Kendala")kd++});
+  $("rsum").textContent=l.length?l.length+" task · "+dn+" selesai"+(kd?" · "+kd+" kendala":""):"Belum ada laporan untuk "+longDate(rDate)+". Tulis task pertama di atas.";
   $("rlist").innerHTML=Object.keys(g).sort().map(function(p){
-    var x=g[p],hh=x.reduce(function(s,r){return s+(+r.hours||0)},0);
-    return'<div class="rg"><h3>'+esc(p)+" <small>"+x.length+" task"+(hh?" · "+hh+" jam":"")+"</small></h3>"+x.map(rrow).join("")+"</div>";
+    var x=g[p];
+    return'<div class="rg"><h3>'+esc(p)+" <small>"+x.length+" task</small></h3>"+x.map(rrow).join("")+"</div>";
   }).join("");
 }
 function repGo(n){var d=new Date(rDate+"T00:00:00");d.setDate(d.getDate()+n);rDate=iso(d);repRender()}
@@ -825,14 +829,16 @@ $("rdate").onchange=function(){if(this.value){rDate=this.value;repRender()}};
 $("rper").onchange=repRender;
 $("rhint").onclick=function(e){
   var x=e.target.closest("[data-q]");if(!x)return;var it=byId(x.dataset.q);if(!it)return;
-  $("rtask").value="Kerjakan: "+it.title;$("rcon").value=it.id;$("rtask").focus();
+  $("rtask").value="Kerjakan: "+it.title;$("rcon").value=conLbl[it.id]||it.title;$("rtask").focus();
 };
 $("rf").onsubmit=async function(e){
   e.preventDefault();var t=$("rtask").value.trim();if(!t)return;
+  var cq=$("rcon").value,cid=cq?conMap[cq]||conMap[cq.trim()]||"":"";
+  if(cq.trim()&&!cid){$("rerr").textContent="Konten tidak ditemukan. Pilih dari daftar yang muncul saat mengetik, atau kosongkan untuk task umum.";$("rcon").focus();return}
   var pf=repProof($("rprf").value);
   if(pf===null){$("rerr").textContent="Link file tidak valid. Tempel link lengkap, mis. https://docs.google.com/...";$("rprf").focus();return}
   $("rerr").textContent="";
-  var r={date:rDate,person:me(),task:t,content_id:$("rcon").value,hours:parseFloat($("rhrs").value)||0,status:$("rsts").value};if(pf)r.proof=pf;
+  var r={date:rDate,person:me(),task:t,content_id:cid,status:$("rsts").value};if(pf)r.proof=pf;
   if(sb){
     var x=await sb.from("reports").insert(r);
     if(x.error&&r.proof&&/proof/i.test(x.error.message)){   // kolom proof belum ada di database: simpan task tanpa file
@@ -842,7 +848,7 @@ $("rf").onsubmit=async function(e){
     if(x.error){alert("Gagal menyimpan: "+x.error.message);return}
     await loadReps();
   }else{r.id=String(Date.now());reps.push(r);saveRep();repRender()}
-  $("rtask").value="";$("rprf").value="";$("rhrs").value="";$("rcon").value="";$("rtask").focus();
+  $("rtask").value="";$("rprf").value="";$("rcon").value="";$("rtask").focus();
 };
 async function repUpd(id,patch){
   var r=reps.find(function(x){return String(x.id)===String(id)});if(!r)return;
@@ -859,7 +865,14 @@ $("rlist").onclick=function(e){
   var d=e.target.closest("[data-rd]");
   if(d&&confirm("Hapus task ini?"))repDel(d.closest("[data-r]").dataset.r);
 };
-$("rlist").onchange=function(e){var s=e.target.closest("[data-rs]");if(s)repUpd(s.closest("[data-r]").dataset.r,{status:s.value})};
+$("rlist").onchange=function(e){
+  var s=e.target.closest("[data-rs]");if(s){repUpd(s.closest("[data-r]").dataset.r,{status:s.value});return}
+  var t=e.target.closest("[data-rt]");if(!t)return;
+  var id=t.closest("[data-r]").dataset.r,r=reps.find(function(x){return String(x.id)===String(id)}),v=t.value.trim();
+  if(!r)return;if(!v){t.value=r.task;return}   // task tidak boleh kosong
+  if(v!==r.task)repUpd(id,{task:v});
+};
+$("rlist").onkeydown=function(e){if(e.key==="Enter"&&e.target.closest("[data-rt]")){e.preventDefault();e.target.blur()}};
 // Link file per task: Google Sheets / Drive dll. Kosong = tanpa file. null = tidak valid.
 function repProof(v){
   v=String(v||"").trim();if(!v)return"";
@@ -883,7 +896,7 @@ $("rcopy").onclick=function(){
   var t="*Laporan Harian · "+longDate(rDate)+"*";
   Object.keys(g).sort().forEach(function(p){
     t+="\n\n*"+p+"*";
-    g[p].forEach(function(r){var it=r.content_id&&byId(r.content_id);t+="\n• "+r.task+(it?" ["+it.title+"]":"")+(+r.hours?" ("+r.hours+" jam)":"")+" – "+r.status+(r.proof?"\n   File: "+r.proof:"")});
+    g[p].forEach(function(r){var it=r.content_id&&byId(r.content_id);t+="\n• "+r.task+(it?" ["+it.title+"]":"")+" – "+r.status+(r.proof?"\n   File: "+r.proof:"")});
   });
   if(!l.length)t+="\n\n(belum ada task)";
   navigator.clipboard.writeText(t).then(function(){b.textContent="Tersalin ✓";setTimeout(function(){b.textContent="Salin untuk WhatsApp"},1500)});
