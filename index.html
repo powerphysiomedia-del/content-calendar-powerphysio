@@ -232,6 +232,8 @@ body.view .day:hover{background:transparent}
 .tl-chips button{background:var(--bg);border:1px solid var(--ln);border-radius:99px;padding:2px 10px;font-size:12px;cursor:pointer}
 .tl-chips button:hover{border-color:var(--ac)}
 #tlfm{grid-template-columns:1fr}
+.tl-ud{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-weight:600}
+.tl-ud[aria-expanded=true] .fc{transform:rotate(90deg)}
 @media (max-width:640px){.tl-two{grid-template-columns:1fr}#tlttl{min-width:0;flex:1}.tl-tm{width:46px}}
 
 </style>
@@ -282,7 +284,8 @@ body.view .day:hover{background:transparent}
   <div id="tlerr" class="err"></div>
   <p class="empty" id="tlsum" style="margin:4px 0 10px;text-align:left;border:0;background:none;padding:0"></p>
   <div id="tllist"></div>
-  <section class="un" style="margin-top:18px"><div class="uh"><h2>Belum ada jadwal syuting</h2><span class="tag" id="tluc"></span></div><div id="tlun"></div></section>
+  <section class="un" style="margin-top:18px"><button type="button" class="btn tl-ud" id="tlutg" aria-expanded="false"><span class="fc">▸</span> Belum ada jadwal syuting <span class="tag" id="tluc"></span></button>
+  <div id="tlupn" style="display:none;margin-top:8px"><input type="search" id="tluq" class="sel" placeholder="Cari konten…" aria-label="Cari konten belum dijadwalkan" autocomplete="off" style="width:100%;border-radius:8px"><div id="tlun" style="max-height:260px;overflow-y:auto;overscroll-behavior:contain;margin-top:8px"></div></div></section>
 </div>
 <div id="vRep" style="display:none">
   <div class="bar">
@@ -1069,7 +1072,7 @@ if(!sb){loadReps();loadFolders();loadShoots()}
 
 
 /* ---------- timeline syuting (tabel "shoots", lihat schema-timeline.sql) ---------- */
-var shoots=[],tlEd=null,tlMode="w",tlCur=new Date(),tlCon={},tlLbl={},TLKEY="cc-shoots-v1",TLDAY=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+var tlUnOpen=false,shoots=[],tlEd=null,tlMode="w",tlCur=new Date(),tlCon={},tlLbl={},TLKEY="cc-shoots-v1",TLDAY=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 function tlPd(k){var p=k.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
 function tlTals(x){var o=[],m={};String(x.talent||"").split(",").forEach(function(t){t=t.trim();var k=t.toLowerCase();if(t&&!m[k]){m[k]=1;o.push(t)}});return o}
 function tlIni(n){var w=n.replace(/^dr\.?\s+/i,"").split(/\s+/);return(w[0][0]+(w[1]?w[1][0]:"")).toUpperCase()}
@@ -1123,11 +1126,14 @@ function tlRender(){
     return'<div class="tl-day'+(k===td?" today":"")+'"><h3 class="tl-dh"><span class="d">'+TLDAY[d.getDay()]+", "+d.getDate()+" "+MON[d.getMonth()]+"</span><small>"+g[k].length+" konten</small></h3>"+g[k].map(function(x){return tlCard(x,cf)}).join("")+"</div>";
   }).join(""):'<div class="empty">Belum ada jadwal syuting'+(ft?" untuk "+esc(ft):"")+" di periode ini."+(canEdit?" Klik + Jadwal syuting untuk mulai.":"")+"</div>";
   var has={};shoots.forEach(function(x){has[x.content_id]=1});
-  var un=items.filter(function(x){return !has[String(x.id)]&&x.prog!=="Posted"}).sort(function(x,y){return(x.date||"9999")<(y.date||"9999")?-1:1});
-  $("tluc").textContent=un.length+" konten";
-  $("tlun").innerHTML=un.length?un.slice(0,60).map(function(x){
+  var all=items.filter(function(x){return !has[String(x.id)]&&x.prog!=="Posted"}).sort(function(x,y){return(x.date||"9999")<(y.date||"9999")?-1:1}),
+  w=($("tluq").value||"").toLowerCase().split(/\s+/).filter(Boolean),
+  un=all.filter(function(x){var t=[x.title,x.pillar,x.date?x.date+" "+longDate(x.date):""].join(" ").toLowerCase();return w.every(function(k){return t.indexOf(k)>-1})});
+  $("tluc").textContent=all.length+" konten";
+  $("tlupn").style.display=tlUnOpen?"":"none";$("tlutg").setAttribute("aria-expanded",tlUnOpen);
+  $("tlun").innerHTML=un.length?un.map(function(x){
     return'<div class="row"><span style="flex:1;min-width:0">'+esc(x.title)+"<br><small>"+esc(x.pillar||"–")+(x.date?" · posting "+esc(longDate(x.date)):" · belum dijadwalkan posting")+"</small></span>"+(canEdit?'<button class="btn sm" data-u="'+esc(x.id)+'">+ Jadwalkan</button>':"")+"</div>";
-  }).join("")+(un.length>60?'<div class="empty">+'+(un.length-60)+" lagi</div>":""):'<div class="empty">Semua konten sudah punya jadwal syuting.</div>';
+  }).join(""):'<div class="empty">'+(all.length?"Tidak ada konten yang cocok.":"Semua konten sudah punya jadwal syuting.")+"</div>";
   $("tladd").style.display=canEdit?"":"none";
 }
 function tlGo(n){if(tlMode==="w")tlCur.setDate(tlCur.getDate()+7*n);else tlCur=new Date(tlCur.getFullYear(),tlCur.getMonth()+n,1);tlRender()}
@@ -1136,6 +1142,8 @@ $("tltod").onclick=function(){tlCur=new Date();tlRender()};
 $("tlmw").onclick=function(){tlMode="w";$("tlmw").setAttribute("aria-pressed",true);$("tlmm").setAttribute("aria-pressed",false);tlRender()};
 $("tlmm").onclick=function(){tlMode="m";$("tlmm").setAttribute("aria-pressed",true);$("tlmw").setAttribute("aria-pressed",false);tlRender()};
 $("tlftal").onchange=tlRender;
+$("tlutg").onclick=function(){tlUnOpen=!tlUnOpen;tlRender();if(tlUnOpen)$("tluq").focus()};
+$("tluq").oninput=tlRender;
 $("tllist").onclick=function(e){var c=e.target.closest(".tl-card");if(c)tlOpen(c.dataset.id)};
 $("tllist").onkeydown=function(e){if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("tl-card")){e.preventDefault();tlOpen(e.target.dataset.id)}};
 $("tlun").onclick=function(e){var b=e.target.closest("[data-u]");if(b)tlOpen(null,b.dataset.u)};
