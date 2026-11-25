@@ -253,7 +253,7 @@ body.view .day:hover{background:transparent}
     <input id="rhrs" type="number" min="0" max="24" step="0.5" placeholder="Jam" aria-label="Durasi (jam)">
     <select id="rsts" aria-label="Status"></select>
     <button class="btn pri">+ Tambah</button>
-    <input id="rprf" type="text" inputmode="url" placeholder="Link bukti file (opsional), mis. Google Sheets / Drive" aria-label="Link bukti file" style="grid-column:1/-1">
+    <input id="rprf" type="text" inputmode="url" placeholder="Link file (opsional), mis. Google Sheets / Drive" aria-label="Link file" style="grid-column:1/-1">
   </form>
   <div class="leg" id="rhint"></div>
   <div id="rerr" class="err"></div>
@@ -792,9 +792,9 @@ function rrow(r){
   return'<div class="rr" data-r="'+esc(r.id)+'"><span class="pd" style="--pc:'+(RSC[r.status]||"var(--mu)")+'" aria-hidden="true"></span>'
    +'<span class="rt">'+esc(r.task)+(it?' <span class="tag" data-oi="'+esc(it.id)+'" title="Buka konten">'+esc(it.title)+"</span>":"")+"</span>"
    +(+r.hours?'<span class="tag">'+r.hours+" jam</span>":"")
-   +(r.proof&&/^https?:\/\//i.test(r.proof)?'<a class="tag" href="'+esc(r.proof)+'" target="_blank" rel="noopener" title="Buka file bukti">📎 Bukti</a>':"")
+   +(r.proof&&/^https?:\/\//i.test(r.proof)?'<a class="tag" href="'+esc(r.proof)+'" target="_blank" rel="noopener" title="Buka file">📎 File</a>':"")
    +'<select data-rs aria-label="Status"'+(mine?"":" disabled")+">"+REP_ST.map(function(s){return"<option"+(s===r.status?" selected":"")+">"+s+"</option>"}).join("")+"</select>"
-   +(mine?'<button class="btn sm" data-rp aria-label="Link bukti" title="'+(r.proof?"Ubah link bukti":"Tambah link bukti")+'">'+(r.proof?"✎":"+ Bukti")+"</button>":"")
+   +(mine?'<button class="btn sm" data-rp aria-label="Link file" title="'+(r.proof?"Ubah link file":"Tambah link file")+'">'+(r.proof?"✎":"+ File")+"</button>":"")
    +(mine?'<button class="btn sm" data-rd aria-label="Hapus task">×</button>':"")+"</div>";
 }
 function repRender(){
@@ -830,14 +830,14 @@ $("rhint").onclick=function(e){
 $("rf").onsubmit=async function(e){
   e.preventDefault();var t=$("rtask").value.trim();if(!t)return;
   var pf=repProof($("rprf").value);
-  if(pf===null){$("rerr").textContent="Link bukti tidak valid. Tempel link lengkap, mis. https://docs.google.com/...";$("rprf").focus();return}
+  if(pf===null){$("rerr").textContent="Link file tidak valid. Tempel link lengkap, mis. https://docs.google.com/...";$("rprf").focus();return}
   $("rerr").textContent="";
   var r={date:rDate,person:me(),task:t,content_id:$("rcon").value,hours:parseFloat($("rhrs").value)||0,status:$("rsts").value};if(pf)r.proof=pf;
   if(sb){
     var x=await sb.from("reports").insert(r);
-    if(x.error&&r.proof&&/proof/i.test(x.error.message)){   // kolom proof belum ada di database: simpan task tanpa bukti
+    if(x.error&&r.proof&&/proof/i.test(x.error.message)){   // kolom proof belum ada di database: simpan task tanpa file
       var r2=Object.assign({},r);delete r2.proof;x=await sb.from("reports").insert(r2);
-      if(!x.error)alert("Task tersimpan, tapi link bukti belum ikut tersimpan karena kolom proof belum ada di database. Jalankan di Supabase SQL Editor:\nalter table reports add column if not exists proof text default '';\nlalu isi bukti lewat tombol + Bukti.");
+      if(!x.error)alert("Task tersimpan, tapi link file belum ikut tersimpan karena kolom proof belum ada di database. Jalankan di Supabase SQL Editor:\nalter table reports add column if not exists proof text default '';\nlalu isi link file lewat tombol + File.");
     }
     if(x.error){alert("Gagal menyimpan: "+x.error.message);return}
     await loadReps();
@@ -860,18 +860,18 @@ $("rlist").onclick=function(e){
   if(d&&confirm("Hapus task ini?"))repDel(d.closest("[data-r]").dataset.r);
 };
 $("rlist").onchange=function(e){var s=e.target.closest("[data-rs]");if(s)repUpd(s.closest("[data-r]").dataset.r,{status:s.value})};
-// Bukti file per task: link Google Sheets / Drive dll. Kosong = tanpa bukti. null = tidak valid.
+// Link file per task: Google Sheets / Drive dll. Kosong = tanpa file. null = tidak valid.
 function repProof(v){
   v=String(v||"").trim();if(!v)return"";
   if(!/^https?:\/\//i.test(v))v="https://"+v;
   try{var u=new URL(v);if(u.hostname.indexOf(".")<0)return null}catch(e){return null}
   return v;
 }
-// Tambah / ubah / hapus link bukti pada task yang sudah ada (hanya task milik sendiri)
+// Tambah / ubah / hapus link file pada task yang sudah ada (hanya task milik sendiri)
 $("rlist").addEventListener("click",function(e){
   var b=e.target.closest("[data-rp]");if(!b)return;
   var id=b.closest("[data-r]").dataset.r,r=reps.find(function(x){return String(x.id)===String(id)});if(!r)return;
-  var v=prompt("Link bukti file (Google Sheets / Drive, dll.).\nKosongkan untuk menghapus bukti.",r.proof||"");
+  var v=prompt("Link file (Google Sheets / Drive, dll.).\nKosongkan untuk menghapus file.",r.proof||"");
   if(v===null)return;
   var p=repProof(v);if(p===null){alert("Link tidak valid. Tempel link lengkap, mis. https://docs.google.com/...");return}
   repUpd(id,{proof:p});
@@ -883,7 +883,7 @@ $("rcopy").onclick=function(){
   var t="*Laporan Harian · "+longDate(rDate)+"*";
   Object.keys(g).sort().forEach(function(p){
     t+="\n\n*"+p+"*";
-    g[p].forEach(function(r){var it=r.content_id&&byId(r.content_id);t+="\n• "+r.task+(it?" ["+it.title+"]":"")+(+r.hours?" ("+r.hours+" jam)":"")+" – "+r.status+(r.proof?"\n   Bukti: "+r.proof:"")});
+    g[p].forEach(function(r){var it=r.content_id&&byId(r.content_id);t+="\n• "+r.task+(it?" ["+it.title+"]":"")+(+r.hours?" ("+r.hours+" jam)":"")+" – "+r.status+(r.proof?"\n   File: "+r.proof:"")});
   });
   if(!l.length)t+="\n\n(belum ada task)";
   navigator.clipboard.writeText(t).then(function(){b.textContent="Tersalin ✓";setTimeout(function(){b.textContent="Salin untuk WhatsApp"},1500)});
